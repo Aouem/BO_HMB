@@ -1,256 +1,222 @@
-<div class="container my-4">
-  <!-- En-tête -->
-  <div class="progress-header mb-4">
-    <h2 class="text-center text-primary mb-3 display-5 fw-bold">📝 {{ checklistNom }}</h2>
-
-    <!-- Progression globale -->
-    <div class="global-progress-container mb-4">
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <span class="progress-text fs-5 fw-semibold">Progression globale</span>
-        <span class="progress-percentage fs-5 fw-bold text-primary">
-          {{ getGlobalProgress() | number:'1.0-0' }}%
-        </span>
-      </div>
-      <div class="progress medical-progress">
-        <div class="progress-bar progress-bar-blue" [style.width]="getGlobalProgress() + '%'"></div>
-      </div>
-      <div class="text-center mt-2">
-        <span class="badge bg-info fs-6">
-          {{ etapesCompletees }}/{{ etapes.length }} étapes validées
-        </span>
-      </div>
+<!-- checklist-formulaire.html -->
+<div class="formulaire-container">
+  <!-- Écran de sélection des checklists -->
+  <div *ngIf="showChecklistSelection" class="checklist-selection">
+    <div class="selection-header">
+      <h1>📋 Sélectionnez une Checklist</h1>
+      <p>Choisissez la checklist que vous souhaitez compléter</p>
     </div>
-  </div>
 
-  <!-- Loading -->
-  <div *ngIf="loading" class="alert alert-info text-center fs-5">
-    <div class="spinner-border me-3" role="status"></div>
-    Chargement des questions...
-  </div>
+    <!-- Loading -->
+    <div *ngIf="loading" class="loading-container">
+      <div class="spinner"></div>
+      <p>Chargement des checklists...</p>
+    </div>
 
-  <!-- Contenu principal (non-loading) -->
-  <ng-container *ngIf="!loading">
-
-    <!-- VUE ÉTAPE (Tableau de bord) -->
-    <div *ngIf="mode === 'etape'" class="etapes-container">
-      <h3 class="text-center mb-4 display-6 fw-bold">Étapes de la Checklist</h3>
-
-      <div class="row g-4">
-        <div *ngFor="let etape of etapes; let i = index" class="col-md-6 col-lg-4">
-          <div class="etape-card" [ngClass]="getEtapeColorClass(i)">
-            <div class="etape-header">
-              <h4 class="etape-title">Étape {{ i + 1 }}</h4>
-              <div class="etape-status" [ngClass]="etapesValidees[i] ? 'status-complete' : 'status-incomplete'">
-                {{ etapesValidees[i] ? '✅ Validée' : '⏳ En cours' }}
-              </div>
-            </div>
-
-            <div class="etape-content">
-              <h5 class="etape-nom">{{ etape.nom }}</h5>
-              <div class="etape-progress-info">
-                <div class="progress mb-2">
-                  <div class="progress-bar"
-                       [style.width]="getEtapeProgress(i) + '%'"
-                       [ngClass]="etapesValidees[i] ? 'bg-success' : 'bg-warning'">
-                  </div>
-                </div>
-                <small>{{ getEtapeAnsweredQuestions(i) }}/{{ etape.questions.length }} questions</small>
-              </div>
-            </div>
-
-            <div class="etape-actions">
-              <button *ngIf="!etapesValidees[i]"
-                      class="btn btn-primary btn-sm"
-                      (click)="commencerEtape(i)"
-                      [disabled]="i > 0 && !etapesValidees[i-1]">
-                {{ getEtapeAnsweredQuestions(i) > 0 ? 'Continuer' : 'Commencer' }}
-              </button>
-
-              <button *ngIf="etapesValidees[i]"
-                      class="btn btn-outline-secondary btn-sm"
-                      (click)="reouvrirEtape(i)">
-                Modifier
-              </button>
-
-              <button *ngIf="etapesValidees[i]" class="btn btn-success btn-sm ms-2" disabled>
-                ✅ Validé
-              </button>
-            </div>
-
-            <div *ngIf="i > 0 && !etapesValidees[i-1]" class="etape-blocage">
-              <small class="text-warning">⏳ Completez l'étape {{ i }} d'abord</small>
-            </div>
+    <!-- Grille des checklists -->
+    <div *ngIf="!loading" class="checklists-grid">
+      <div *ngFor="let checklist of allChecklists" 
+           class="checklist-card"
+           (click)="selectChecklist(checklist)">
+        
+        <div class="card-header">
+          <h3 class="card-title">{{ checklist.libelle }}</h3>
+          <div class="card-badge">
+            {{ checklist.etapes.length || 0 }} étapes
           </div>
         </div>
-      </div>
 
-      <!-- Bouton de soumission finale -->
-      <div *ngIf="toutesEtapesValidees()" class="text-center mt-5">
-        <button class="btn btn-success btn-lg px-5" (click)="submitFinalForm()">
-          🚀 Soumettre le Formulaire Complet
-        </button>
-        <p class="text-muted mt-2">Toutes les étapes sont validées !</p>
+        <div class="card-content">
+          <p class="card-description" *ngIf="checklist.description">
+            {{ checklist.description }}
+          </p>
+          <p class="card-questions">
+            📝 {{ getTotalQuestions(checklist) }} questions
+          </p>
+        </div>
+
+        <div class="card-footer">
+          <button class="btn-select">
+            Sélectionner →
+          </button>
+        </div>
       </div>
     </div>
 
-    <!-- VUE QUESTION (Détail d'une étape) — MODE SÉQUENTIEL -->
-    <div *ngIf="mode === 'question' && currentEtape as etape" class="questions-container">
-      <!-- En-tête de l'étape -->
-      <div class="etape-current-header mb-4">
-        <button class="btn btn-outline-secondary mb-3" (click)="retourAuTableauDeBord()">
-          ⬅️ Retour au tableau de bord
-        </button>
+    <!-- État vide -->
+    <div *ngIf="!loading && allChecklists.length === 0" class="empty-state">
+      <h2>Aucune checklist disponible</h2>
+      <p>Créez d'abord des checklists dans la section administration.</p>
+    </div>
+  </div>
 
-        <div class="etape-banner" [ngClass]="getEtapeColorClass(currentEtapeIndex)">
-          <h3 class="etape-title mb-2">Étape {{ currentEtapeIndex + 1 }}/{{ etapes.length }}</h3>
-          <p class="etape-description mb-0">{{ etape.nom }}</p>
-        </div>
+  <!-- Formulaire de la checklist sélectionnée -->
+  <div *ngIf="!showChecklistSelection && selectedChecklist" class="checklist-form">
+    
+    <!-- En-tête du formulaire -->
+    <div class="form-header">
+      <button class="btn-back" (click)="backToSelection()">
+        ← Retour aux checklists
+      </button>
+      <h1>{{ checklistNom }}</h1>
+      <div class="form-stats">
+        <span class="stat">{{ answeredQuestions }}/{{ totalQuestions }} réponses</span>
+        <span class="stat">{{ etapesCompletees }}/{{ etapes.length }} étapes</span>
+      </div>
+    </div>
 
-        <!-- Progression de l'étape -->
-        <div class="etape-current-progress mt-3">
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <span>Progression de l'étape</span>
-            <span class="fw-bold">{{ getEtapeProgress(currentEtapeIndex) | number:'1.0-0' }}%</span>
+    <!-- Barre de progression -->
+    <div class="progress-section">
+      <div class="progress-bar">
+        <div class="progress-fill" [style.width.%]="getGlobalProgress()"></div>
+      </div>
+      <span class="progress-text">{{ getGlobalProgress() | number:'1.0-0' }}% complété</span>
+    </div>
+
+    <!-- Mode vue d'ensemble des étapes -->
+    <div *ngIf="mode === 'etape'" class="etapes-overview">
+      <div *ngFor="let etape of etapes; let i = index" 
+           class="etape-card" 
+           [class.complete]="etapesValidees[i]"
+           [class.current]="i === currentEtapeIndex">
+        
+        <div class="etape-header">
+          <div class="etape-indicator">
+            <span class="etape-number">{{ i + 1 }}</span>
+            <div class="etape-status" [class.validated]="etapesValidees[i]">
+              {{ etapesValidees[i] ? '✓' : '○' }}
+            </div>
           </div>
-          <div class="progress medical-progress">
-            <div class="progress-bar"
-                 [style.width]="getEtapeProgress(currentEtapeIndex) + '%'"
-                 [ngClass]="getEtapeColorClass(currentEtapeIndex).replace('etape-color', 'progress-bar')">
+          
+          <div class="etape-info">
+            <h3 class="etape-title">{{ etape.nom }}</h3>
+            <p class="etape-stats">
+              {{ getEtapeAnsweredQuestions(i) }}/{{ etape.questions.length }} réponses
+            </p>
+          </div>
+
+          <div class="etape-progress">
+            <div class="progress-bar small">
+              <div class="progress-fill" [style.width.%]="getEtapeProgress(i)"></div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Question courante (une seule à la fois) -->
-      <div class="question-card mb-4"
-           *ngIf="currentQuestion as question"
-           [ngClass]="getAnswerCardClass(question.id)">
-        <div class="question-header d-flex justify-content-between align-items-center">
-          <h5 class="question-number mb-0">
-            Question {{ currentQuestionIndex + 1 }} / {{ etape.questions.length }}
-          </h5>
-
-          <!-- Badge de réponse choisie -->
-          <ng-container *ngIf="getQuestionResponse(question.id) as rep">
-            <span class="badge rounded-pill" [ngClass]="answerBadgeClass(rep)">
-              {{ rep }}
-            </span>
-          </ng-container>
-        </div>
-
-        <p class="question-text fs-5 mt-3">{{ question.texte }}</p>
-
-        <!-- Réponses -->
-        <div *ngIf="question.type === 'Boolean' || question.type === 'BooleanNA'" class="boolean-options">
-          <div class="btn-group" role="group" aria-label="Réponse Oui/Non">
-            <button *ngFor="let val of getBooleanOptions(question.type)"
-                    type="button"
-                    class="btn"
-                    [ngClass]="getChoiceBtnClasses(question.id, val)"
-                    (click)="onAnswerSelected(question.id, val)">
-              {{ val }}
-            </button>
-          </div>
-        </div>
-
-        <!-- Liste -->
-        <div *ngIf="question.type === 'Liste'" class="mt-2">
-          <select class="form-select"
-                  [ngClass]="{'is-valid': getQuestionResponse(question.id)}"
-                  [value]="getQuestionResponse(question.id) || ''"
-                  (change)="onAnswerSelected(question.id, $any($event.target).value)">
-            <option value="">Sélectionnez...</option>
-            <option *ngFor="let opt of question.options" [value]="opt.valeur">{{ opt.valeur }}</option>
-          </select>
-        </div>
-
-        <!-- Texte -->
-        <div *ngIf="question.type === 'Texte'" class="mt-2">
-          <input type="text"
-                 class="form-control"
-                 [ngClass]="{'is-valid': getQuestionResponse(question.id)}"
-                 [value]="getQuestionResponse(question.id) || ''"
-                 (input)="onAnswerSelected(question.id, $any($event.target).value)"
-                 placeholder="Votre réponse...">
-        </div>
-
-        <!-- Navigation intra-étape -->
-        <div class="d-flex justify-content-between align-items-center mt-4">
-          <button class="btn btn-outline-secondary"
-                  (click)="prevQuestion()"
-                  [disabled]="isFirstQuestion">
-            ⬅️ Précédente
+        <div class="etape-actions">
+          <button *ngIf="!etapesValidees[i]" 
+                  class="btn-start"
+                  (click)="commencerEtape(i)">
+            {{ i === currentEtapeIndex ? 'Continuer' : 'Commencer' }}
+          </button>
+          
+          <button *ngIf="etapesValidees[i]" 
+                  class="btn-review"
+                  (click)="commencerEtape(i)">
+            Réviser
           </button>
 
-          <div class="text-muted small">
-            Appuyez sur <strong>Suivante</strong> après avoir répondu
+          <button *ngIf="etapesValidees[i]" 
+                  class="btn-reopen"
+                  (click)="reouvrirEtape(i)">
+            Rouvrir
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mode question par question -->
+    <div *ngIf="mode === 'question' && currentEtape" class="question-mode">
+      <div class="question-header">
+        <h2>{{ currentEtape.nom }}</h2>
+        <div class="question-nav">
+          <span class="question-counter">
+            Question {{ currentQuestionIndex + 1 }}/{{ currentEtape.questions.length }}
+          </span>
+          <button class="btn-back-to-overview" (click)="retourAuTableauDeBord()">
+            ← Vue d'ensemble
+          </button>
+        </div>
+      </div>
+
+      <div *ngIf="currentQuestion" class="question-container">
+        <div class="question-card">
+          <h3 class="question-text">{{ currentQuestion.texte }}</h3>
+          
+          <div *ngIf="currentQuestion.type === 'Boolean' || currentQuestion.type === 'BooleanNA'" 
+               class="answer-options">
+            <button *ngFor="let option of getBooleanOptions(currentQuestion.type)"
+                    class="answer-btn"
+                    [ngClass]="getChoiceBtnClasses(currentQuestion.id, option)"
+                    (click)="onAnswerSelected(currentQuestion.id, option)">
+              {{ option }}
+            </button>
           </div>
 
+          <div *ngIf="currentQuestion.type === 'Texte'" class="text-answer">
+            <textarea 
+              class="form-control"
+              [value]="getQuestionResponse(currentQuestion.id) || ''"
+              (input)="onAnswerSelected(currentQuestion.id, $any($event.target).value)"
+              placeholder="Saisissez votre réponse..."
+              rows="4">
+            </textarea>
+          </div>
+
+          <!-- Ajouter d'autres types de questions si nécessaire -->
+        </div>
+
+        <div class="question-navigation">
+          <button class="btn-prev" 
+                  (click)="prevQuestion()"
+                  [disabled]="isFirstQuestion">
+            ← Précédent
+          </button>
+
           <button *ngIf="!isLastQuestionInEtape"
-                  class="btn btn-primary"
+                  class="btn-next"
                   (click)="nextQuestion()"
                   [disabled]="!canGoNext()">
-            Suivante ➡️
+            Suivant →
           </button>
 
           <button *ngIf="isLastQuestionInEtape"
-                  class="btn btn-success"
+                  class="btn-validate"
                   (click)="validerEtape()"
                   [disabled]="!isEtapeComplete(currentEtapeIndex)">
-            ✅ Valider l'étape
+            Valider l'étape ✓
           </button>
         </div>
-
-        <div *ngIf="!canGoNext()" class="text-warning mt-2">
-          ⚠️ Répondez à la question pour continuer
-        </div>
-      </div>
-
-      <!-- Rappel de validation (optionnel) -->
-      <div class="validation-etape text-center mt-5" *ngIf="!isLastQuestionInEtape">
-        <button class="btn btn-outline-success btn-sm"
-                (click)="validerEtape()"
-                [disabled]="!isEtapeComplete(currentEtapeIndex)">
-          Valider l'étape maintenant
-        </button>
       </div>
     </div>
 
-    <!-- Message de succès -->
-    <div *ngIf="submitted" class="alert alert-success text-center mt-4">
-      <h4>🎉 Formulaire soumis avec succès !</h4>
-      <p class="mb-3">{{ answeredQuestions }} réponses enregistrées</p>
-      <button class="btn btn-outline-primary" (click)="resetForm()">
-        🔄 Nouveau Formulaire
+    <!-- Actions globales -->
+    <div class="global-actions" *ngIf="mode === 'etape'">
+      <button class="btn-reset" (click)="resetForm()">
+        🔄 Recommencer
+      </button>
+      
+      <button class="btn-preview" (click)="previewSoumission()">
+        👁️ Prévisualiser
+      </button>
+      
+      <button class="btn-history" (click)="viewSubmissionHistory()">
+        📊 Historique
+      </button>
+
+      <button *ngIf="toutesEtapesValidees()" 
+              class="btn-submit"
+              (click)="submitFinalForm()">
+        ✅ Soumettre le formulaire
       </button>
     </div>
 
-    <!-- === VISUALISATION DES DONNÉES ENREGISTRÉES === -->
-    <div class="row mt-3">
-      <div class="col-12">
-        <div class="card">
-          <div class="card-header bg-primary text-white">
-            <h6 class="mb-0">👁️ Visualisation des Données Enregistrées</h6>
-          </div>
-          <div class="card-body">
-            <!-- Alertes importantes (pas de tableau de détail) -->
-            <div *ngIf="getEtapesCompletesNonValidees().length > 0" class="alert alert-warning mt-2">
-              <h6>⚠️ Attention:</h6>
-              <p>Il y a {{ getEtapesCompletesNonValidees().length }} étape(s) complète(s) mais non validée(s):</p>
-              <ul class="mb-0">
-                <li *ngFor="let index of getEtapesCompletesNonValidees()">
-                  Étape {{ index + 1 }}: {{ etapes[index].nom }}
-                  <button class="btn btn-success btn-sm ms-2" (click)="forcerValidationEtape(index)">
-                    Valider maintenant
-                  </button>
-                </li>
-              </ul>
-            </div>
-            <!-- Fin alertes -->
-          </div>
-        </div>
-      </div>
+    <!-- Message de soumission réussie -->
+    <div *ngIf="submitted" class="submission-success">
+      <h3>✅ Formulaire soumis avec succès !</h3>
+      <p>Vos réponses ont été enregistrées dans le système.</p>
+      <button class="btn-new" (click)="resetForm()">
+        📝 Nouveau formulaire
+      </button>
     </div>
-
-  </ng-container>
+  </div>
 </div>
