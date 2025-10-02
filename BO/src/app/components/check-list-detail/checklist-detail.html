@@ -1,0 +1,144 @@
+<!-- Loading -->
+<div *ngIf="loading" class="alert alert-info text-center my-3">Chargement…</div>
+
+<!-- Erreur -->
+<div *ngIf="!loading && errorMsg" class="alert alert-warning my-3">{{ errorMsg }}</div>
+
+<!-- Contenu -->
+<ng-container *ngIf="!loading && !errorMsg && agg as c">
+  <!-- En-tête -->
+  <header class="detail-header">
+    <h2 class="title">CHECK-LIST « {{ c.libelle }} »</h2>
+    <div class="chips">
+      <span class="chip">{{ totalSubmissions }} {{ headerCountLabel }}</span>
+      <span class="chip">{{ c.etapes.length }} étape(s)</span>
+    </div>
+  </header>
+
+  <!-- Étapes -->
+  <section *ngFor="let et of c.etapes; let ei = index; trackBy: trackByEt" class="etape-section">
+    <h3 class="etape-title">Étape {{ ei + 1 }} — {{ et.nom }}</h3>
+
+    <div class="table-wrapper">
+      <table class="table-checklist">
+        <colgroup>
+          <col style="width: 48px" />
+          <col />
+          <col style="width: 70px" />
+          <col style="width: 70px" />
+          <col style="width: 70px" />
+          <col style="width: 180px" />
+          <col style="width: 120px" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th class="sticky-col">#</th>
+            <th class="sticky-col">Question</th>
+            <th class="center">Oui</th>
+            <th class="center">Non</th>
+            <th class="center">N/A</th>
+            <th>Dernière réponse</th>
+            <th class="center hide-sm">Nb. soumissions</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <tr *ngFor="let q of et.questions; let qi = index; trackBy: trackByQ">
+            <td class="sticky-col num">{{ qi + 1 }}</td>
+
+            <td class="sticky-col question">
+              <div class="q-text">{{ q.texte }}</div>
+              <div class="q-meta" *ngIf="q.type !== 'Boolean'">
+                <span class="tag">{{ q.type }}</span>
+              </div>
+            </td>
+
+            <!-- Pastilles Oui / Non / N/A (affichent la DERNIÈRE réponse) -->
+            <td class="center">
+              <span class="pill" [class.pill-oui]="isLatest(q,'Oui')" title="Oui">
+                {{ isLatest(q,'Oui') ? '✓' : '' }}
+              </span>
+            </td>
+            <td class="center">
+              <span class="pill" [class.pill-non]="isLatest(q,'Non')" title="Non">
+                {{ isLatest(q,'Non') ? '✓' : '' }}
+              </span>
+            </td>
+            <td class="center">
+              <span class="pill" [class.pill-na]="isLatest(q,'N/A')" title="N/A">
+                {{ isLatest(q,'N/A') ? '✓' : '' }}
+              </span>
+            </td>
+
+            <td>
+              <div class="last-answer">
+                <span class="ans-badge" [ngClass]="badgeClass(latest(q)?.reponse)">
+                  {{ latest(q)?.reponse || '—' }}
+                </span>
+                <small class="muted" *ngIf="latest(q)?.submittedBy || latest(q)?.submittedAt">
+                  · {{ latest(q)?.submittedBy || '—' }}
+                  <ng-container *ngIf="latest(q)?.submittedAt">
+                    · {{ latest(q)?.submittedAt | date:'dd/MM/yyyy HH:mm' }}
+                  </ng-container>
+                </small>
+              </div>
+            </td>
+
+            <td class="center hide-sm">
+              <a href="#soumissions" class="count-link">{{ q.submissions.length || 0 }}</a>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Toutes les soumissions (à plat) -->
+  <section id="soumissions" class="all-submissions">
+    <div class="section-head">
+      <h4>Toutes les soumissions</h4>
+      <span class="muted">{{ flatSubmissions.length }} ligne(s)</span>
+    </div>
+
+    <div class="table-wrapper">
+      <table class="table-flat">
+        <colgroup>
+          <col style="width: 56px" />
+          <col style="width: 240px" />
+          <col />
+          <col style="width: 140px" />
+          <col style="width: 180px" />
+          <col style="width: 110px" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Étape</th>
+            <th>Question</th>
+            <th>Réponse</th>
+            <th>Date &amp; heure</th>
+            <th class="center">ID</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngIf="flatSubmissions.length === 0">
+            <td colspan="6" class="empty">Aucune soumission à afficher.</td>
+          </tr>
+
+          <tr *ngFor="let r of flatSubmissions; let i = index; trackBy: trackByFlat">
+            <td class="num">{{ i + 1 }}</td>
+            <td class="wrap">{{ r.etape }}</td>
+            <td class="wrap">{{ r.question }}</td>
+            <td>
+              <span class="ans-badge" [ngClass]="badgeClass(r.reponse)">{{ r.reponse || '—' }}</span>
+            </td>
+            <td class="muted">
+              {{ r.submittedAt ? (r.submittedAt | date:'dd/MM/yyyy HH:mm') : '—' }}
+            </td>
+            <td class="center">{{ r.submissionId ?? '—' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</ng-container>

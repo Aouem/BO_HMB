@@ -1,0 +1,128 @@
+<div class="container-fluid d-flex justify-content-center">
+  <form [formGroup]="form" (ngSubmit)="onSubmit()" class="checklist-form">
+
+    <h2>Créer une checklist</h2>
+
+    <!-- Message succès -->
+    <div *ngIf="formSubmitted" class="alert alert-success text-center">
+      Checklist créée avec succès !
+    </div>
+
+    <!-- Libellé de la checklist -->
+    <div class="mb-4">
+      <label class="form-label fw-bold">Libellé de la checklist</label>
+      <input formControlName="libelle" type="text" class="form-control" placeholder="Libellé" />
+    </div>
+
+    <!-- Étapes -->
+    <div formArrayName="etapes">
+      <div *ngFor="let etape of etapes?.controls; let ei = index" [formGroupName]="ei" class="etape-card mb-4 p-3">
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h4 class="mb-0">Étape {{ ei + 1 }}</h4>
+          <button type="button" class="btn btn-danger btn-sm" (click)="removeEtape(ei)">
+            <i class="bi bi-trash"></i> Supprimer étape
+          </button>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Nom de l'étape</label>
+          <input formControlName="nom" type="text" class="form-control" placeholder="Nom de l'étape" />
+        </div>
+
+        <!-- Questions -->
+        <div formArrayName="questions">
+          <div *ngFor="let q of getQuestions(ei)?.controls; let qi = index" [formGroupName]="qi" class="question-card mb-3 p-3">
+
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <label class="fw-bold">Question {{ qi + 1 }}</label>
+              <span class="badge bg-primary">{{ q?.get('type')?.value || 'N/A' }}</span>
+            </div>
+
+            <input formControlName="texte" type="text" class="form-control mb-2" placeholder="Texte de la question" />
+
+            <!-- Type de question -->
+            <select formControlName="type" class="form-select mb-2" (change)="onTypeChange(ei, qi)">
+              <option value="Boolean">Oui / Non</option>
+              <option value="BooleanNA">Oui / Non / N/A</option>
+              <option value="Texte">Texte</option>
+              <option value="Liste">Liste</option>
+            </select>
+
+            <!-- Réponse Boolean / BooleanNA -->
+            <div *ngIf="q?.get('type')?.value === 'Boolean' || q?.get('type')?.value === 'BooleanNA'" class="mb-2">
+              <label>Réponse</label>
+              <select formControlName="reponse" class="form-select">
+                <option value="">-- Sélectionner --</option>
+                <option value="Oui">Oui</option>
+                <option value="Non">Non</option>
+                <option *ngIf="q?.get('type')?.value === 'BooleanNA'" value="N/A">N/A</option>
+              </select>
+            </div>
+
+            <!-- Réponse Liste -->
+            <div *ngIf="q?.get('type')?.value === 'Liste'" formArrayName="options" class="mb-2">
+              <div *ngFor="let o of getOptions(ei, qi)?.controls; let oi = index" [formGroupName]="oi" class="d-flex gap-2 mb-1 align-items-center">
+                <input formControlName="valeur" type="text" class="form-control" placeholder="Valeur option" />
+                <button type="button" class="btn btn-outline-danger btn-sm" (click)="removeOption(ei, qi, oi)">
+                  <i class="bi bi-x-circle"></i>
+                </button>
+              </div>
+              <button type="button" class="btn btn-outline-secondary btn-sm" (click)="addOption(ei, qi)">
+                <i class="bi bi-plus-circle"></i> Ajouter option
+              </button>
+            </div>
+
+            <!-- Supprimer question -->
+            <button type="button" class="btn btn-warning btn-sm mt-2" (click)="removeQuestion(ei, qi)">
+              <i class="bi bi-trash"></i> Supprimer question
+            </button>
+
+          </div>
+        </div>
+
+        <!-- Ajouter question -->
+        <div class="d-flex gap-2 mt-2">
+          <button type="button" class="btn btn-success btn-sm" (click)="addQuestion(ei)">
+            <i class="bi bi-plus-circle"></i> Ajouter une question
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Ajouter étape / Valider checklist -->
+    <div class="d-flex gap-2 mt-3">
+      <button type="button" class="btn btn-primary flex-fill" (click)="addEtape()">
+        <i class="bi bi-plus-circle"></i> Ajouter une étape
+      </button>
+      <button type="submit" class="btn btn-gradient flex-fill">
+        <i class="bi bi-check-circle"></i> Valider la checklist
+      </button>
+    </div>
+
+  </form>
+</div>
+
+<!-- ================================================== -->
+<!-- LISTE DES CHECKLISTS EXISTANTES -->
+<!-- ================================================== -->
+<div class="mt-5">
+  <h3>Checklists existantes</h3>
+
+  <div *ngIf="loading" class="alert alert-info">Chargement...</div>
+  <div *ngIf="!loading && checklists.length === 0" class="alert alert-warning">Aucune checklist disponible.</div>
+
+  <div *ngFor="let cl of checklists" class="border p-3 mb-3 rounded">
+    <h4>{{ cl?.libelle }}</h4>
+
+    <div *ngFor="let et of cl?.etapes">
+      <h5>Étape : {{ et?.nom }}</h5>
+      <ul>
+        <li *ngFor="let q of et?.questions">
+          {{ q?.texte }} ({{ q?.type }})
+        </li>
+      </ul>
+    </div>
+  </div>
+</div>

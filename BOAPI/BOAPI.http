@@ -1,0 +1,6 @@
+@BOAPI_HostAddress = http://localhost:5221
+
+GET {{BOAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

@@ -1,0 +1,27 @@
+<div *ngIf="checklist">
+  <h2 class="text-center">{{ checklist.libelle }}</h2>
+
+  <form [formGroup]="form" (ngSubmit)="onSubmit()">
+    <div *ngFor="let q of checklist.questions" class="mb-3">
+      <label class="fw-bold">{{ q.texte }}</label>
+
+      <div *ngIf="q.type === 'Boolean' || q.type === 'Liste'">
+        <div *ngFor="let opt of q.options" class="form-check form-check-inline">
+          <input
+            class="form-check-input"
+            type="radio"
+            [value]="opt"
+            [formControlName]="q.id.toString()"
+          />
+          <label class="form-check-label">{{ opt }}</label>
+        </div>
+      </div>
+
+      <div *ngIf="q.type === 'Texte'">
+        <input type="text" class="form-control" [formControlName]="q.id.toString()" />
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Valider</button>
+  </form>
+</div>

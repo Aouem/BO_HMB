@@ -1,0 +1,24 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BOAPI", "BOAPI.csproj", "{8A2EDF6E-874C-6D08-FB16-5F32D67B7BEE}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8A2EDF6E-874C-6D08-FB16-5F32D67B7BEE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8A2EDF6E-874C-6D08-FB16-5F32D67B7BEE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8A2EDF6E-874C-6D08-FB16-5F32D67B7BEE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8A2EDF6E-874C-6D08-FB16-5F32D67B7BEE}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {0E8F7B2C-7A0B-4704-AAA9-A54C4C10802C}
+	EndGlobalSection
+EndGlobal
