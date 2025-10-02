@@ -676,3 +676,4 @@
 /home/ak/Documents/blocHMB/BOAPI/obj/Debug/net8.0/BOAPI.pdb
 /home/ak/Documents/blocHMB/BOAPI/obj/Debug/net8.0/BOAPI.genruntimeconfig.cache
 /home/ak/Documents/blocHMB/BOAPI/obj/Debug/net8.0/ref/BOAPI.dll
+/home/ak/Documents/blocHMB/BOAPI/obj/Debug/net8.0/BOAPI.sourcelink.json

@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { FormService } from '../../services/form-service';
 import { CheckListService } from '../../services/check-list-service';
-import { CheckListDto, EtapeDto, QuestionDto, FormResponseDto, QuestionResponseDto } from '../../models';
+import { CheckListDto, EtapeDto, QuestionDto, FormResponseDto, QuestionResponseDto, FormSubmissionDto } from '../../models';
 import { CommonModule } from '@angular/common';
 
 @Component({
@@ -14,6 +14,7 @@ import { CommonModule } from '@angular/common';
 })
 export class ChecklistFormulaireComponent implements OnInit {
   checklistId: number = 1;
+    currentUser: string = '';
   checklistNom: string = '';
   etapes: EtapeDto[] = [];
   form!: FormGroup;
@@ -44,6 +45,8 @@ ngOnInit(): void {
     etapes: this.fb.array([]) // Initialisation de la liste des étapes
   });
 
+
+      this.loadCurrentUser();
   this.loadChecklist();
   this.loadPartialProgress();
 }
@@ -84,7 +87,10 @@ loadChecklist() {
   });
 }
 
-
+  private loadCurrentUser(): void {
+    // Récupérer l'utilisateur connecté
+    this.currentUser = localStorage.getItem('currentUser') || 'utilisateur_anonyme';
+  }
 
   // === GETTERS ===
   get currentEtape(): EtapeDto | null {
@@ -274,40 +280,49 @@ loadChecklist() {
 
   // === SUBMIT ===
   submitFinalForm() {
-  if (this.reponsesPartielles.length === 0) {
-    alert('Aucune réponse à soumettre !');
-    return;
-  }
-
-  const toutesEtapesValidees = this.etapes.every((_, index) => this.isEtapeComplete(index));
-  if (!toutesEtapesValidees) {
-    alert('Veuillez compléter toutes les étapes avant de soumettre.');
-    return;
-  }
-
-  const formData: FormResponseDto = {
-    checkListId: this.checklistId,
-    reponses: this.reponsesPartielles
-  };
-
-  // Log the data to verify it before submitting
-  console.log('Form data to be submitted:', formData);
-
-  this.loading = true;
-  this.formService.submitForm(formData).subscribe({
-    next: (response) => {
-      console.log('Response from backend:', response);
-      this.submitted = true;
-      this.loading = false;
-      localStorage.removeItem(`checklist_${this.checklistId}_progress`);
-    },
-    error: (err: any) => {
-      console.error('Error response from backend:', err);
-      this.loading = false;
-      alert('Erreur lors de la soumission du formulaire');
+    if (this.reponsesPartielles.length === 0) {
+      alert('Aucune réponse à soumettre !');
+      return;
     }
-  });
-}
+
+    const toutesEtapesValidees = this.etapes.every((_, index) => this.isEtapeComplete(index));
+    if (!toutesEtapesValidees) {
+      alert('Veuillez compléter toutes les étapes avant de soumettre.');
+      return;
+    }
+
+    // Créer la soumission avec date et utilisateur
+    const formData: FormResponseDto = {
+      checkListId: this.checklistId,
+      reponses: this.reponsesPartielles,
+      submittedBy: this.currentUser,
+      submittedAt: new Date().toISOString()
+    };
+
+    console.log('Nouvelle soumission:', formData);
+
+    this.loading = true;
+    
+    // Utiliser FormService pour la soumission
+    this.formService.submitForm(formData).subscribe({
+      next: (response: FormSubmissionDto) => {
+        console.log('Soumission réussie:', response);
+        this.submitted = true;
+        this.loading = false;
+        
+        // Nettoyer la progression locale MAIS garder l'historique dans la base
+        localStorage.removeItem(`checklist_${this.checklistId}_progress`);
+        
+        // Afficher un message de succès avec l'ID de soumission
+        alert(`Formulaire soumis avec succès !\nID de soumission: ${response.id}\nDate: ${new Date(response.submittedAt).toLocaleString()}`);
+      },
+      error: (err: any) => {
+        console.error('Erreur de soumission:', err);
+        this.loading = false;
+        alert('Erreur lors de la soumission du formulaire');
+      }
+    });
+  }
 
 
   // === RESET ===
@@ -391,5 +406,44 @@ getAnswerCardClass(questionId: number) {
     na: response === 'N/A'
   };
 }
+  // Nouvelle méthode pour charger une soumission existante
+  loadExistingSubmission(submissionId: number): void {
+    this.formService.getFormSubmissions(this.checklistId).subscribe({
+      next: (submissions: FormSubmissionDto[]) => {
+        const submission = submissions.find(s => s.id === submissionId);
+        if (submission) {
+          // Charger les réponses dans l'interface
+          this.reponsesPartielles = [...submission.reponses];
+          this.savePartialProgress();
+          alert(`Soumission ${submissionId} chargée (${submission.reponses.length} réponses)`);
+        }
+      },
+      error: (err) => {
+        console.error('Erreur chargement soumission:', err);
+        alert('Erreur lors du chargement de la soumission');
+      }
+    });
+  }
 
+  // Méthode pour voir l'historique des soumissions
+  viewSubmissionHistory(): void {
+    this.formService.getFormSubmissions(this.checklistId).subscribe({
+      next: (submissions: FormSubmissionDto[]) => {
+        if (submissions.length === 0) {
+          alert('Aucune soumission historique trouvée.');
+          return;
+        }
+
+        const historyMessage = submissions.map(s => 
+          `Soumission #${s.id} - ${new Date(s.submittedAt).toLocaleString()} - Par: ${s.submittedBy} - ${s.reponses.length} réponses`
+        ).join('\n');
+
+        alert(`Historique des soumissions:\n\n${historyMessage}`);
+      },
+      error: (err) => {
+        console.error('Erreur historique:', err);
+        alert('Erreur lors du chargement de l\'historique');
+      }
+    });
+  }
 }

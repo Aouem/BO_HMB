@@ -3,10 +3,8 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, map, switchMap, catchError, of, forkJoin, throwError } from 'rxjs';
 import { environment } from '../../environments/environment';
-import {
-  CheckListDto, QuestionDto, EtapeDto,
-  FormSubmissionDto, QuestionResponseDto, CreateCheckListDto, FormResponseDto
-} from '../models';
+import { CheckListDto, CreateCheckListDto, EtapeDto, FormResponseDto, FormSubmissionDto, QuestionDto, QuestionResponseDto } from '../models';
+
 
 // Attache des soumissions à chaque question
 export interface QuestionSubmission {
@@ -58,25 +56,35 @@ export class CheckListService {
 
   /** Enregistrer une soumission (créera Id + date côté backend) */
   submitChecklist(payload: FormResponseDto): Observable<FormSubmissionDto> {
-    return this.http.post<FormSubmissionDto>(`${this.formApi}/submit`, payload);
+    // S'assurer que la date et l'utilisateur sont définis
+    const completePayload = {
+      ...payload,
+      submittedAt: payload.submittedAt || new Date().toISOString(),
+      submittedBy: payload.submittedBy || this.getCurrentUser()
+    };
+    
+    return this.http.post<FormSubmissionDto>(`${this.formApi}/submit`, completePayload);
   }
 
   /** Lire les soumissions horodatées d’une checklist */
-getChecklistSubmissions(checklistId: number): Observable<FormSubmissionDto[]> {
-  const formApi = `${environment.apiUrl}/Form`;
-
-  const params = new HttpParams().set('checkListId', String(checklistId));
-  return this.http.get<FormSubmissionDto[]>(`${formApi}/submissions`, { params }).pipe(
-    // Écarter les soumissions sans réponses (comme id=1 dans ton exemple)
-    map(list => (list ?? []).filter(s => (s.reponses?.length ?? 0) > 0)),
-    // Trier de la plus récente à la plus ancienne
-    map(list =>
-      list.sort((a, b) => new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime())
-    )
-  );
-}
-
-
+  getChecklistSubmissions(checklistId: number): Observable<FormSubmissionDto[]> {
+    const params = new HttpParams().set('checkListId', String(checklistId));
+    return this.http.get<FormSubmissionDto[]>(`${this.formApi}/submissions`, { params }).pipe(
+      map(list => (list ?? []).filter(s => (s.reponses?.length ?? 0) > 0)),
+      map(list => list.sort((a, b) => 
+        new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime()
+      ))
+    );
+  }
+  getLatestSubmission(checklistId: number): Observable<FormSubmissionDto | null> {
+    return this.getChecklistSubmissions(checklistId).pipe(
+      map(submissions => submissions.length > 0 ? submissions[0] : null)
+    );
+  }
+  private getCurrentUser(): string {
+    // Implémentez votre logique d'authentification ici
+    return localStorage.getItem('currentUser') || 'utilisateur_anonyme';
+  }
   /** Fallback: lire les “réponses courantes” question par question si pas d’historique */
   getLatestAnswers(checklistId: number): Observable<QuestionDto[]> {
     const tryA$ = this.http

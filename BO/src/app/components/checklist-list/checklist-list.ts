@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { CheckListService} from '../../services/check-list-service';
-import { CheckListDto, CreateCheckListDto } from '../../models';
+import { CheckListDto, CreateCheckListDto, CreateResponseOptionDto } from '../../models';
 
 // --- Interfaces frontend ---
 interface QuestionFrontend {
@@ -12,16 +12,16 @@ interface QuestionFrontend {
   type: 'Boolean' | 'BooleanNA' | 'Texte' | 'Liste';
   options: { id?: number; valeur: string }[];
   reponse?: string | null;
-    height?: string;
-
+  height?: string;
+  ordre?: number;
 }
 
 interface EtapeFrontend {
   id?: number;
   nom: string;
   questions: QuestionFrontend[];
-    height?: string;
-
+  height?: string;
+  ordre?: number;
 }
 
 interface CheckListFrontend {
@@ -59,15 +59,17 @@ export class CheckListListComponent implements OnInit {
         this.checklists = data.map(cl => ({
           id: cl.id,
           libelle: cl.libelle,
-          etapes: cl.etapes?.map(e => ({
+          etapes: cl.etapes?.map((e, index) => ({
             id: e.id,
             nom: e.nom,
-            questions: e.questions?.map(q => ({
+            ordre: e.ordre || index,
+            questions: e.questions?.map((q, qIndex) => ({
               id: q.id,
               texte: q.texte,
               type: ['Boolean', 'BooleanNA', 'Texte', 'Liste'].includes(q.type) ? q.type as QuestionFrontend['type'] : 'Boolean',
               options: q.options?.map(o => ({ id: o.id, valeur: o.valeur })) || [],
-              reponse: ''
+              reponse: '',
+              ordre: qIndex
             })) || []
           })) || []
         }));
@@ -130,15 +132,20 @@ export class CheckListListComponent implements OnInit {
   // --- Étapes ---
   addEtape(checklist: CheckListFrontend) {
     if (!checklist.etapes) checklist.etapes = [];
+    const newOrdre = checklist.etapes.length;
     checklist.etapes.push({
       id: 0,
       nom: '',
-      questions: []
+      questions: [],
+      ordre: newOrdre
     });
   }
 
   removeEtape(checklist: CheckListFrontend, index: number) {
     checklist.etapes.splice(index, 1);
+    checklist.etapes.forEach((etape, idx) => {
+      etape.ordre = idx;
+    });
   }
 
   updateEtapeNom(etape: EtapeFrontend, value: string) {
@@ -147,17 +154,22 @@ export class CheckListListComponent implements OnInit {
 
   // --- Questions ---
   addQuestion(etape: EtapeFrontend) {
+    const newOrdre = etape.questions.length;
     etape.questions.push({
       id: 0,
       texte: '',
       type: 'Boolean',
       options: [],
-      reponse: ''
+      reponse: '',
+      ordre: newOrdre
     });
   }
 
   removeQuestion(etape: EtapeFrontend, index: number) {
     etape.questions.splice(index, 1);
+    etape.questions.forEach((question, idx) => {
+      question.ordre = idx;
+    });
   }
 
   updateQuestionTexte(question: QuestionFrontend, value: string) {
@@ -183,72 +195,82 @@ export class CheckListListComponent implements OnInit {
   }
 
   // --- Sauvegarder checklist ---
-// --- Sauvegarder checklist ---
-saveChecklist(checklist: CheckListFrontend) {
-  // Préparer le payload pour CREATE (nouvelle checklist)
-  const createPayload: CreateCheckListDto = {
-    libelle: checklist.libelle,
-    etapes: checklist.etapes.map(e => ({
-      nom: e.nom,
-      questions: e.questions.map(q => ({
-        texte: q.texte,
-        type: q.type,
-        options: q.options.map(o => ({
-          valeur: o.valeur
-        })),
-        reponse: q.reponse || undefined // Convertir null en undefined
-      }))
-    }))
-  };
+  saveChecklist(checklist: CheckListFrontend) {
+    // Préparer le payload pour CREATE (nouvelle checklist)
+    const createPayload: CreateCheckListDto = {
+      libelle: checklist.libelle,
+      etapes: checklist.etapes.map((etape, etapeIndex) => ({
+        nom: etape.nom,
+        ordre: etape.ordre !== undefined ? etape.ordre : etapeIndex,
+        questions: etape.questions.map((question, questionIndex) => {
+          // Préparer les options selon le type CreateResponseOptionDto
+          const options: CreateResponseOptionDto[] = question.options.map((option, optionIndex) => ({
+            texte: option.valeur, // Utiliser la valeur comme texte
+            valeur: option.valeur,
+            ordre: optionIndex
+          }));
 
-  if (checklist.id && checklist.id > 0) {
-    // ✅ CORRECTION : Pour UPDATE, utiliser CreateCheckListDto avec l'ID dans l'URL
-    this.checklistService.updateCheckList(checklist.id, createPayload).subscribe({
-      next: (res: CheckListDto) => {
-        console.log('Checklist mise à jour avec succès', res);
-        
-        const index = this.checklists.findIndex(cl => cl.id === checklist.id);
-        if (index !== -1) {
-          this.checklists[index] = {
-            ...this.checklists[index],
-            libelle: res.libelle,
-            etapes: res.etapes.map(e => ({
-              id: e.id,
-              nom: e.nom,
-              questions: e.questions.map(q => ({
-                id: q.id,
-                texte: q.texte,
-                type: q.type as QuestionFrontend['type'],
-                options: q.options.map(o => ({ id: o.id, valeur: o.valeur })),
-                reponse: ''
-              }))
-            }))
+          return {
+            libelle: question.texte,
+            type: question.type,
+            ordre: question.ordre !== undefined ? question.ordre : questionIndex,
+            options: options,
+            reponse: question.reponse || undefined
           };
-          this.filteredChecklists = [...this.checklists];
+        })
+      }))
+    };
+
+    if (checklist.id && checklist.id > 0) {
+      // UPDATE
+      this.checklistService.updateCheckList(checklist.id, createPayload).subscribe({
+        next: (res: CheckListDto) => {
+          console.log('Checklist mise à jour avec succès', res);
+          
+          const index = this.checklists.findIndex(cl => cl.id === checklist.id);
+          if (index !== -1) {
+            this.checklists[index] = {
+              ...this.checklists[index],
+              libelle: res.libelle,
+              etapes: res.etapes.map((e, etapeIndex) => ({
+                id: e.id,
+                nom: e.nom,
+                ordre: e.ordre || etapeIndex,
+                questions: e.questions.map((q, questionIndex) => ({
+                  id: q.id,
+                  texte: q.texte,
+                  type: q.type as QuestionFrontend['type'],
+                  options: q.options.map(o => ({ id: o.id, valeur: o.valeur })),
+                  reponse: '',
+                  ordre: questionIndex
+                }))
+              }))
+            };
+            this.filteredChecklists = [...this.checklists];
+          }
+          
+          alert('Checklist mise à jour avec succès !');
+        },
+        error: (err) => {
+          console.error('Erreur lors de la mise à jour:', err);
+          alert('Erreur lors de la mise à jour de la checklist');
         }
-        
-        alert('Checklist mise à jour avec succès !');
-      },
-      error: (err) => {
-        console.error('Erreur lors de la mise à jour:', err);
-        alert('Erreur lors de la mise à jour de la checklist');
-      }
-    });
-  } else {
-    // Pour CREATE, utiliser directement createPayload
-    this.checklistService.createCheckList(createPayload).subscribe({
-      next: (res: CheckListDto) => {
-        console.log('Checklist créée avec succès', res);
-        this.loadChecklists();
-        alert('Checklist créée avec succès !');
-      },
-      error: (err) => {
-        console.error('Erreur lors de la création:', err);
-        alert('Erreur lors de la création de la checklist');
-      }
-    });
+      });
+    } else {
+      // CREATE
+      this.checklistService.createCheckList(createPayload).subscribe({
+        next: (res: CheckListDto) => {
+          console.log('Checklist créée avec succès', res);
+          this.loadChecklists();
+          alert('Checklist créée avec succès !');
+        },
+        error: (err) => {
+          console.error('Erreur lors de la création:', err);
+          alert('Erreur lors de la création de la checklist');
+        }
+      });
+    }
   }
-}
 
   // --- Nouveau handler pour contenteditable ---
   onBlurLibelle(event: Event, cl: any) {
@@ -290,9 +312,9 @@ saveChecklist(checklist: CheckListFrontend) {
   // === MÉTHODES POUR LES CHAMPS ADAPTATIFS ===
 
   // Calculer la largeur d'un champ basée sur le contenu
- getInputWidth(value: string | undefined | null, minWidth: number = 200): string {
-  return '100%'; // Toujours 100% de largeur
-}
+  getInputWidth(value: string | undefined | null, minWidth: number = 200): string {
+    return '100%';
+  }
 
   // Calculer la largeur d'un select basée sur la valeur sélectionnée
   getSelectWidth(value: string | undefined | null, minWidth: number = 180): string {
@@ -304,14 +326,14 @@ saveChecklist(checklist: CheckListFrontend) {
   }
 
   // Calculer la largeur pour les champs contenteditable
-getFieldWidth(value: string | undefined | null, minWidth: number = 200): string {
-  return '100%'; // Toujours 100% de largeur
-}
+  getFieldWidth(value: string | undefined | null, minWidth: number = 200): string {
+    return '100%';
+  }
 
   // Méthode utilitaire pour les champs option
-getOptionWidth(option: { valeur: string } | undefined, minWidth: number = 150): string {
-  return '100%'; // Toujours 100% de largeur
-}
+  getOptionWidth(option: { valeur: string } | undefined, minWidth: number = 150): string {
+    return '100%';
+  }
 
   // Ajustement automatique lors de la saisie
   autoResizeField(event: Event): void {
@@ -332,115 +354,122 @@ getOptionWidth(option: { valeur: string } | undefined, minWidth: number = 150): 
       target.style.width = Math.min(width, 800) + 'px';
     }
   }
-  // Ajouter cette méthode dans la classe CheckListListComponent
 
-
-
-// Méthode pour calculer la hauteur basée sur le contenu
-getTextareaHeight(value: string | undefined | null, minHeight: number = 60): string {
-  if (!value) return minHeight + 'px';
-  
-  const lineCount = (value.match(/\n/g) || []).length + 1;
-  const calculatedHeight = Math.max(minHeight, lineCount * 24 + 32); // 24px par ligne + padding
-  return Math.min(calculatedHeight, 300) + 'px'; // Hauteur max de 300px
-}
-
-// Ajouter ces méthodes dans la classe CheckListListComponent
-
-// Générer des particules aléatoires
-generateParticles(questionIndex: number): void {
-  // Cette méthode peut être utilisée pour ajouter des effets visuels dynamiques
-  console.log('Génération de particules pour la question', questionIndex);
-}
-
-// Animation lors de l'ajout d'une nouvelle question
-animateNewQuestion(etape: EtapeFrontend, questionIndex: number): void {
-  const newQuestion = etape.questions[questionIndex];
-  // Ajouter une classe d'animation
-  setTimeout(() => {
-    // L'animation CSS s'occupe du reste
-  }, 100);
-}
-
-// Méthode pour centrer le texte dynamiquement
-centerText(element: HTMLElement): void {
-  element.style.textAlign = 'center';
-  element.style.display = 'flex';
-  element.style.alignItems = 'center';
-  element.style.justifyContent = 'center';
-}
-
-// Ajouter ces méthodes dans la classe CheckListListComponent
-
-// Méthodes pour identifier le type d'étape
-isAvantIntervention(nomEtape: string): boolean {
-  return nomEtape.toLowerCase().includes('avant') || 
-         nomEtape.toLowerCase().includes('time-out') ||
-         nomEtape.toLowerCase().includes('pause');
-}
-
-isPendantIntervention(nomEtape: string): boolean {
-  return nomEtape.toLowerCase().includes('pendant') || 
-         nomEtape.toLowerCase().includes('intervention') ||
-         nomEtape.toLowerCase().includes('chirurgie');
-}
-
-isApresIntervention(nomEtape: string): boolean {
-  return nomEtape.toLowerCase().includes('après') || 
-         nomEtape.toLowerCase().includes('post') ||
-         nomEtape.toLowerCase().includes('récupération');
-}
-
-isControleFinal(nomEtape: string): boolean {
-  return nomEtape.toLowerCase().includes('contrôle') || 
-         nomEtape.toLowerCase().includes('final') ||
-         nomEtape.toLowerCase().includes('vérification');
-}
-
-// Méthode pour obtenir le type d'étape
-getEtapeType(nomEtape: string): string {
-  if (this.isAvantIntervention(nomEtape)) return 'Avant';
-  if (this.isPendantIntervention(nomEtape)) return 'Pendant';
-  if (this.isApresIntervention(nomEtape)) return 'Après';
-  if (this.isControleFinal(nomEtape)) return 'Contrôle';
-  return 'Phase';
-}
-
-// Méthodes pour identifier les types de questions
-isLongQuestion(texte: string): boolean {
-  return texte.length > 100;
-}
-
-isConfirmationQuestion(texte: string): boolean {
-  return texte.toLowerCase().includes('confirmation') || 
-         texte.toLowerCase().includes('vérifier') ||
-         texte.toLowerCase().includes('contrôler');
-}
-
-isImportantQuestion(texte: string): boolean {
-  return texte.toLowerCase().includes('sécurité') || 
-         texte.toLowerCase().includes('risque') ||
-         texte.toLowerCase().includes('indésirable') ||
-         texte.toLowerCase().includes('signalement');
-}
-
-// Méthode pour l'expansion automatique des textarea
-onTextareaResize(event: Event): void {
-  const target = event.target as HTMLTextAreaElement;
-  if (target) {
-    // Réinitialiser la hauteur
-    target.style.height = 'auto';
+  // Méthode pour calculer la hauteur basée sur le contenu
+  getTextareaHeight(value: string | undefined | null, minHeight: number = 60): string {
+    if (!value) return minHeight + 'px';
     
-    // Ajuster la hauteur selon le contenu
-    const newHeight = Math.max(target.scrollHeight, parseInt(target.getAttribute('min-height') || '80'));
-    target.style.height = newHeight + 'px';
-    
-    // Ajouter une classe si le contenu est long
-    if (target.value.length > 100) {
-      target.classList.add('long-question');
-    } else {
-      target.classList.remove('long-question');
+    const lineCount = (value.match(/\n/g) || []).length + 1;
+    const calculatedHeight = Math.max(minHeight, lineCount * 24 + 32);
+    return Math.min(calculatedHeight, 300) + 'px';
+  }
+
+  // Générer des particules aléatoires
+  generateParticles(questionIndex: number): void {
+    console.log('Génération de particules pour la question', questionIndex);
+  }
+
+  // Animation lors de l'ajout d'une nouvelle question
+  animateNewQuestion(etape: EtapeFrontend, questionIndex: number): void {
+    const newQuestion = etape.questions[questionIndex];
+    setTimeout(() => {
+      // L'animation CSS s'occupe du reste
+    }, 100);
+  }
+
+  // Méthode pour centrer le texte dynamiquement
+  centerText(element: HTMLElement): void {
+    element.style.textAlign = 'center';
+    element.style.display = 'flex';
+    element.style.alignItems = 'center';
+    element.style.justifyContent = 'center';
+  }
+
+  // Méthodes pour identifier le type d'étape
+  isAvantIntervention(nomEtape: string): boolean {
+    return nomEtape.toLowerCase().includes('avant') || 
+           nomEtape.toLowerCase().includes('time-out') ||
+           nomEtape.toLowerCase().includes('pause');
+  }
+
+  isPendantIntervention(nomEtape: string): boolean {
+    return nomEtape.toLowerCase().includes('pendant') || 
+           nomEtape.toLowerCase().includes('intervention') ||
+           nomEtape.toLowerCase().includes('chirurgie');
+  }
+
+  isApresIntervention(nomEtape: string): boolean {
+    return nomEtape.toLowerCase().includes('après') || 
+           nomEtape.toLowerCase().includes('post') ||
+           nomEtape.toLowerCase().includes('récupération');
+  }
+
+  isControleFinal(nomEtape: string): boolean {
+    return nomEtape.toLowerCase().includes('contrôle') || 
+           nomEtape.toLowerCase().includes('final') ||
+           nomEtape.toLowerCase().includes('vérification');
+  }
+
+  // Méthode pour obtenir le type d'étape
+  getEtapeType(nomEtape: string): string {
+    if (this.isAvantIntervention(nomEtape)) return 'Avant';
+    if (this.isPendantIntervention(nomEtape)) return 'Pendant';
+    if (this.isApresIntervention(nomEtape)) return 'Après';
+    if (this.isControleFinal(nomEtape)) return 'Contrôle';
+    return 'Phase';
+  }
+
+  // Méthodes pour identifier les types de questions
+  isLongQuestion(texte: string): boolean {
+    return texte.length > 100;
+  }
+
+  isConfirmationQuestion(texte: string): boolean {
+    return texte.toLowerCase().includes('confirmation') || 
+           texte.toLowerCase().includes('vérifier') ||
+           texte.toLowerCase().includes('contrôler');
+  }
+
+  isImportantQuestion(texte: string): boolean {
+    return texte.toLowerCase().includes('sécurité') || 
+           texte.toLowerCase().includes('risque') ||
+           texte.toLowerCase().includes('indésirable') ||
+           texte.toLowerCase().includes('signalement');
+  }
+
+  // Méthode pour l'expansion automatique des textarea
+  onTextareaResize(event: Event): void {
+    const target = event.target as HTMLTextAreaElement;
+    if (target) {
+      target.style.height = 'auto';
+      const newHeight = Math.max(target.scrollHeight, parseInt(target.getAttribute('min-height') || '80'));
+      target.style.height = newHeight + 'px';
+      
+      if (target.value.length > 100) {
+        target.classList.add('long-question');
+      } else {
+        target.classList.remove('long-question');
+      }
     }
   }
-}
+
+  // Méthode pour réorganiser l'ordre des étapes après un drag & drop
+  reorderEtapes(checklist: CheckListFrontend, oldIndex: number, newIndex: number): void {
+    const [movedEtape] = checklist.etapes.splice(oldIndex, 1);
+    checklist.etapes.splice(newIndex, 0, movedEtape);
+    
+    checklist.etapes.forEach((etape, index) => {
+      etape.ordre = index;
+    });
+  }
+
+  // Méthode pour réorganiser l'ordre des questions après un drag & drop
+  reorderQuestions(etape: EtapeFrontend, oldIndex: number, newIndex: number): void {
+    const [movedQuestion] = etape.questions.splice(oldIndex, 1);
+    etape.questions.splice(newIndex, 0, movedQuestion);
+    
+    etape.questions.forEach((question, index) => {
+      question.ordre = index;
+    });
+  }
 }

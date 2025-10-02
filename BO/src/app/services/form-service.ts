@@ -11,6 +11,7 @@ import { CheckListDto, CreateCheckListDto, FormResponseDto, FormSubmissionDto, Q
 export class FormService {
 
   private baseUrl = `${environment.apiUrl}/Question`; // <-- utilisation de environment.apiUrl
+  private formApi = `${environment.apiUrl}/Form`; // Ajouter pour les soumissions
 
   constructor(private http: HttpClient) { }
 
@@ -39,8 +40,23 @@ export class FormService {
   }
 
   submitForm(formData: FormResponseDto): Observable<FormSubmissionDto> {
-  return this.http.post<FormSubmissionDto>(`${this.baseUrl}/submit`, formData);
-}
+    // Utiliser le endpoint Form pour les soumissions
+    return this.http.post<FormSubmissionDto>(`${this.formApi}/submit`, {
+      ...formData,
+      submittedAt: formData.submittedAt || new Date().toISOString(),
+      submittedBy: formData.submittedBy || this.getCurrentUser()
+    });
+  }
+    getFormSubmissions(checklistId: number): Observable<FormSubmissionDto[]> {
+    return this.http.get<FormSubmissionDto[]>(`${this.formApi}/submissions`, {
+      params: { checkListId: checklistId.toString() }
+    });
+  }
+
+  private getCurrentUser(): string {
+    return localStorage.getItem('currentUser') || 'utilisateur_anonyme';
+  }
+  
 // Dans CheckListService
 createCheckList(dto: CreateCheckListDto): Observable<CheckListDto> {
   return this.http.post<CheckListDto>(`${this.baseUrl}/with-etapes`, dto);

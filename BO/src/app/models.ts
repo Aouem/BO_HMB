@@ -1,7 +1,11 @@
-// === INTERFACES DE BASE (Lecture) ===
+// === INTERFACES DE BASE ===
+
 export interface ResponseOptionDto {
   id: number;
+  texte: string;
   valeur: string;
+  ordre: number;
+  questionId: number;
 }
 
 export interface QuestionDto {
@@ -21,62 +25,75 @@ export interface EtapeDto {
   id: number;
   nom: string;
   ordre: number;
-  questions: QuestionDto[];
   estValidee: boolean;
+  questions: QuestionDto[];
 }
 
-// === INTERFACE DE BASE POUR CHECKLIST ===
-export interface CheckListBaseDto {
+export interface CheckListDto {
+  id: number;
   libelle: string;
+  description?: string;
+  version?: string;
   etapes: EtapeDto[];
 }
 
-// === INTERFACES SPÉCIALISÉES ===
-export interface CheckListDto extends CheckListBaseDto {
-  id: number;
-  version: string;
-  description: string;
-}
+// === INTERFACES POUR LES RÉPONSES ===
 
-// === INTERFACES POUR LA CRÉATION (Écriture) ===
-export interface CreateResponseOptionDto {
-  id?: number; 
-  valeur: string;
-}
-
-export interface CreateQuestionDto {
-  texte: string;
-  type: string; // "Boolean" | "Liste" | "Texte"
-  options?: CreateResponseOptionDto[];
-  reponse?: string; // facultatif pour stocker la réponse
-}
-
-export interface CreateEtapeDto {
-  nom: string;
-  questions: CreateQuestionDto[];
-}
-
-export interface CreateCheckListDto {
-  libelle: string;
-  etapes: CreateEtapeDto[];
-}
-
-// === INTERFACES POUR LES RÉPONSES DU FORMULAIRE ===
 export interface QuestionResponseDto {
   questionId: number;
-  reponse?: string;
+  reponse: string;
 }
 
 export interface FormResponseDto {
   checkListId: number;
   reponses: QuestionResponseDto[];
+  submittedBy?: string;
+  submittedAt?: string;
 }
+
+export interface FormSubmissionDto {
+  id: number;
+  checkListId: number;
+  submittedBy: string;
+  submittedAt: string;
+  reponses: QuestionResponseDto[];
+}
+
+// === INTERFACES POUR LA CRÉATION ===
+
+export interface CreateResponseOptionDto {
+  texte: string;
+  valeur: string;
+  ordre: number;
+}
+
+export interface CreateQuestionDto {
+  libelle: string;
+  type: string;
+  ordre: number;
+  estObligatoire?: boolean;
+  options?: CreateResponseOptionDto[];
+}
+
+export interface CreateEtapeDto {
+  nom: string;
+  ordre: number;
+  questions: CreateQuestionDto[];
+}
+
+export interface CreateCheckListDto {
+  libelle: string;
+  description?: string;
+  version?: string;
+  etapes: CreateEtapeDto[];
+}
+
+// === INTERFACES POUR LE FRONTEND (si nécessaires) ===
 
 export interface CheckList {
   libelle: string;
   questions: Question[];
 }
-
 
 export interface Question {
   texte: string;
@@ -89,7 +106,12 @@ export interface Question {
 
 export interface QuestionWithResponse extends Question {}
 
-// Fonction utilitaire pour convertir QuestionDto (backend) en Question (frontend)
+export interface ResponseOption {
+  valeur: string;
+}
+
+// === FONCTIONS UTILITAIRES ===
+
 export function mapQuestionDtoToQuestion(q: QuestionDto): QuestionWithResponse {
   let strictType: Question['type'] = 'Boolean';
   if (q.type === 'Boolean' || q.type === 'BooleanNA' || q.type === 'Texte' || q.type === 'Liste') {
@@ -100,21 +122,7 @@ export function mapQuestionDtoToQuestion(q: QuestionDto): QuestionWithResponse {
     ...q,
     type: strictType,
     options: q.options || [],
-    reponse: '',
+    reponse: q.reponse || '',
     id: q.id
   };
-}
-
-export interface ResponseOption {
-  valeur: string;
-}
-
-// === INTERFACES POUR LA LECTURE DES SOUMISSIONS (historique) ===
-// (le backend doit renvoyer au minimum ça pour chaque soumission)
-export interface FormSubmissionDto {
-  id: number;
-  checkListId: number;
-  submittedAt: string;      // ISO date string
-  submittedBy?: string;     // optionnel
-  reponses: QuestionResponseDto[];
 }
