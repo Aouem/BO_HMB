@@ -1,144 +1,178 @@
-<!-- Loading -->
-<div *ngIf="loading" class="alert alert-info text-center my-3">Chargement…</div>
+<!-- checklist-detail.component.html -->
+<div class="checklist-detail-container">
+  <!-- Loading -->
+  <div *ngIf="loading" class="loading-container">
+    <div class="spinner"></div>
+    <p>Chargement de la checklist...</p>
+  </div>
 
-<!-- Erreur -->
-<div *ngIf="!loading && errorMsg" class="alert alert-warning my-3">{{ errorMsg }}</div>
-
-<!-- Contenu -->
-<ng-container *ngIf="!loading && !errorMsg && agg as c">
-  <!-- En-tête -->
-  <header class="detail-header">
-    <h2 class="title">CHECK-LIST « {{ c.libelle }} »</h2>
-    <div class="chips">
-      <span class="chip">{{ totalSubmissions }} {{ headerCountLabel }}</span>
-      <span class="chip">{{ c.etapes.length }} étape(s)</span>
+  <!-- Erreur -->
+  <div *ngIf="!loading && errorMsg" class="error-container">
+    <div class="alert alert-danger">
+      {{ errorMsg }}
     </div>
-  </header>
+  </div>
 
-  <!-- Étapes -->
-  <section *ngFor="let et of c.etapes; let ei = index; trackBy: trackByEt" class="etape-section">
-    <h3 class="etape-title">Étape {{ ei + 1 }} — {{ et.nom }}</h3>
+  <!-- Contenu principal -->
+  <ng-container *ngIf="!loading && !errorMsg && agg">
+    <!-- En-tête -->
+    <header class="detail-header">
+      <h1 class="checklist-title">
+        CHECK-LIST « {{ agg.libelle }} »
+      </h1>
+      <div class="checklist-stats">
+        <span class="stat-badge">{{ totalSubmissions }} soumission(s)</span>
+        <span class="stat-badge">{{ agg.etapes.length }} étape(s)</span>
+      </div>
+    </header>
 
-    <div class="table-wrapper">
-      <table class="table-checklist">
-        <colgroup>
-          <col style="width: 48px" />
-          <col />
-          <col style="width: 70px" />
-          <col style="width: 70px" />
-          <col style="width: 70px" />
-          <col style="width: 180px" />
-          <col style="width: 120px" />
-        </colgroup>
-        <thead>
-          <tr>
-            <th class="sticky-col">#</th>
-            <th class="sticky-col">Question</th>
-            <th class="center">Oui</th>
-            <th class="center">Non</th>
-            <th class="center">N/A</th>
-            <th>Dernière réponse</th>
-            <th class="center hide-sm">Nb. soumissions</th>
-          </tr>
-        </thead>
+    <!-- Tableau des soumissions -->
+    <section class="submissions-section">
+      <h2 class="section-title">📊 Historique des Soumissions</h2>
 
-        <tbody>
-          <tr *ngFor="let q of et.questions; let qi = index; trackBy: trackByQ">
-            <td class="sticky-col num">{{ qi + 1 }}</td>
+      <div *ngIf="!hasRealSubmissions" class="no-submissions">
+        <div class="empty-state">
+          <h3>Aucune soumission trouvée</h3>
+          <p>Les soumissions apparaîtront ici une fois que le formulaire sera complété.</p>
+        </div>
+      </div>
 
-            <td class="sticky-col question">
-              <div class="q-text">{{ q.texte }}</div>
-              <div class="q-meta" *ngIf="q.type !== 'Boolean'">
-                <span class="tag">{{ q.type }}</span>
-              </div>
-            </td>
+      <div *ngIf="hasRealSubmissions" class="table-container">
+        <table class="submissions-table">
+          <thead>
+            <tr>
+              <th class="col-id">ID Soumission</th>
+              <th class="col-date">Date</th>
+              <th class="col-user">Utilisateur</th>
+              <th class="col-status">Statut</th>
+              <th class="col-actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let submission of submissions; trackBy: trackBySubmission" 
+                class="submission-row">
+              
+              <!-- ID Soumission -->
+              <td class="col-id">
+                <span class="submission-id">#{{ submission.id }}</span>
+              </td>
 
-            <!-- Pastilles Oui / Non / N/A (affichent la DERNIÈRE réponse) -->
-            <td class="center">
-              <span class="pill" [class.pill-oui]="isLatest(q,'Oui')" title="Oui">
-                {{ isLatest(q,'Oui') ? '✓' : '' }}
-              </span>
-            </td>
-            <td class="center">
-              <span class="pill" [class.pill-non]="isLatest(q,'Non')" title="Non">
-                {{ isLatest(q,'Non') ? '✓' : '' }}
-              </span>
-            </td>
-            <td class="center">
-              <span class="pill" [class.pill-na]="isLatest(q,'N/A')" title="N/A">
-                {{ isLatest(q,'N/A') ? '✓' : '' }}
-              </span>
-            </td>
+              <!-- Date -->
+              <td class="col-date">
+                <span class="submission-date">{{ formatDate(submission.submittedAt) }}</span>
+              </td>
 
-            <td>
-              <div class="last-answer">
-                <span class="ans-badge" [ngClass]="badgeClass(latest(q)?.reponse)">
-                  {{ latest(q)?.reponse || '—' }}
+              <!-- Utilisateur -->
+              <td class="col-user">
+                <span class="submission-user">{{ submission.submittedBy }}</span>
+              </td>
+
+              <!-- Statut -->
+              <td class="col-status">
+                <span class="status-badge" [ngClass]="getSubmissionStatus(submission).class">
+                  {{ getSubmissionStatus(submission).text }}
                 </span>
-                <small class="muted" *ngIf="latest(q)?.submittedBy || latest(q)?.submittedAt">
-                  · {{ latest(q)?.submittedBy || '—' }}
-                  <ng-container *ngIf="latest(q)?.submittedAt">
-                    · {{ latest(q)?.submittedAt | date:'dd/MM/yyyy HH:mm' }}
-                  </ng-container>
-                </small>
+              </td>
+
+              <!-- Actions -->
+              <td class="col-actions">
+                <button 
+                  class="btn-detail"
+                  (click)="showSubmissionDetails(submission)">
+                  📋 Détails
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Modal de détails -->
+    <div *ngIf="selectedSubmission" class="modal-overlay" (click)="hideSubmissionDetails()">
+      <div class="modal-content" (click)="$event.stopPropagation()">
+        
+        <!-- En-tête du modal -->
+        <div class="modal-header">
+          <h3>📋 Détails de la Soumission #{{ selectedSubmission.id }}</h3>
+          <button class="btn-close" (click)="hideSubmissionDetails()">×</button>
+        </div>
+        
+        <!-- Informations de la soumission -->
+        <div class="modal-body">
+          <div class="submission-info">
+            <div class="info-grid">
+              <div class="info-item">
+                <label>Checklist:</label>
+                <span>{{ agg.libelle }}</span>
               </div>
-            </td>
+              <div class="info-item">
+                <label>Date:</label>
+                <span>{{ formatDate(selectedSubmission.submittedAt) }}</span>
+              </div>
+              <div class="info-item">
+                <label>Utilisateur:</label>
+                <span>{{ selectedSubmission.submittedBy }}</span>
+              </div>
+              <div class="info-item">
+                <label>Nombre de réponses:</label>
+                <span>{{ selectedSubmission.reponses.length }}</span>
+              </div>
+            </div>
+          </div>
 
-            <td class="center hide-sm">
-              <a href="#soumissions" class="count-link">{{ q.submissions.length || 0 }}</a>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+          <!-- Résumé statistique -->
+          <div class="responses-summary">
+            <h4>📈 Résumé des réponses</h4>
+            <div class="stats-grid">
+              <div class="stat-item">
+                <span class="stat-value">{{ countResponsesByType(selectedSubmission).oui }}</span>
+                <span class="stat-label">✅ Oui</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-value">{{ countResponsesByType(selectedSubmission).non }}</span>
+                <span class="stat-label">❌ Non</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-value">{{ countResponsesByType(selectedSubmission).na }}</span>
+                <span class="stat-label">⚪ N/A</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-value">{{ countResponsesByType(selectedSubmission).texte }}</span>
+                <span class="stat-label">📝 Texte</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Détails des questions/réponses -->
+          <div class="questions-details">
+            <h4>📋 Détail des vérifications</h4>
+            
+            <!-- Grouper par étape -->
+            <div *ngFor="let etape of getGroupedResponses(selectedSubmission)" class="etape-group">
+              <h5 class="etape-name">{{ etape.name }}</h5>
+              
+              <div *ngFor="let response of etape.responses; let i = index; trackBy: trackByResponse" 
+                   class="response-item">
+                <div class="response-question">
+                  <strong>Q{{ i + 1 }}:</strong> 
+                  {{ response.questionText }}
+                </div>
+                <div class="response-answer" [ngClass]="getAnswerClass(response.reponse)">
+                  <strong>Réponse:</strong> {{ response.reponse }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pied du modal -->
+        <div class="modal-footer">
+          <button class="btn-close-modal" (click)="hideSubmissionDetails()">
+            Fermer
+          </button>
+        </div>
+      </div>
     </div>
-  </section>
-
-  <!-- Toutes les soumissions (à plat) -->
-  <section id="soumissions" class="all-submissions">
-    <div class="section-head">
-      <h4>Toutes les soumissions</h4>
-      <span class="muted">{{ flatSubmissions.length }} ligne(s)</span>
-    </div>
-
-    <div class="table-wrapper">
-      <table class="table-flat">
-        <colgroup>
-          <col style="width: 56px" />
-          <col style="width: 240px" />
-          <col />
-          <col style="width: 140px" />
-          <col style="width: 180px" />
-          <col style="width: 110px" />
-        </colgroup>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Étape</th>
-            <th>Question</th>
-            <th>Réponse</th>
-            <th>Date &amp; heure</th>
-            <th class="center">ID</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngIf="flatSubmissions.length === 0">
-            <td colspan="6" class="empty">Aucune soumission à afficher.</td>
-          </tr>
-
-          <tr *ngFor="let r of flatSubmissions; let i = index; trackBy: trackByFlat">
-            <td class="num">{{ i + 1 }}</td>
-            <td class="wrap">{{ r.etape }}</td>
-            <td class="wrap">{{ r.question }}</td>
-            <td>
-              <span class="ans-badge" [ngClass]="badgeClass(r.reponse)">{{ r.reponse || '—' }}</span>
-            </td>
-            <td class="muted">
-              {{ r.submittedAt ? (r.submittedAt | date:'dd/MM/yyyy HH:mm') : '—' }}
-            </td>
-            <td class="center">{{ r.submissionId ?? '—' }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
-</ng-container>
+  </ng-container>
+</div>
