@@ -2,20 +2,22 @@
   <!-- En-tête avec onglets -->
   <div class="header-actions">
     <h1>🎯 Checklist Chirurgicale</h1>
-    <div class="tabs-container">
-      <button 
-        class="tab-btn" 
-        [class.active]="activeTab === 'edit'"
-        (click)="activeTab = 'edit'">
-        ✏️ Édition
-      </button>
-      <button 
-        class="tab-btn" 
-        [class.active]="activeTab === 'history'"
-        (click)="loadAllSubmissions()">
-        📊 Historique des Soumissions
-      </button>
-    </div>
+  <div class="tabs-container d-flex justify-content-center mb-3">
+  <button 
+    class="btn me-2"
+    [ngClass]="{'btn-primary': activeTab === 'edit', 'btn-outline-primary': activeTab !== 'edit'}"
+    (click)="activeTab = 'edit'">
+    ✏️ Édition
+  </button>
+
+  <button 
+    class="btn"
+    [ngClass]="{'btn-primary': activeTab === 'history', 'btn-outline-primary': activeTab !== 'history'}"
+    (click)="activeTab = 'history'; loadAllSubmissions()">
+    📊 Historique des Soumissions
+  </button>
+</div>
+
     <button class="btn creative-btn gradient-btn" (click)="createNewChecklist()">
       ✨ Nouvelle Checklist
     </button>

@@ -897,3 +897,19 @@ textarea:focus {
 .btn-print:hover {
     background-color: #2980b9;
 }
+
+.tabs-container .btn {
+  border-radius: 20px;
+  font-weight: 500;
+  padding: 8px 18px;
+  transition: all 0.2s ease-in-out;
+}
+
+.tabs-container .btn-outline-primary:hover {
+  background-color: #f0f8ff;
+  color: #0d6efd;
+}
+
+.tabs-container .btn-primary {
+  box-shadow: 0 3px 8px rgba(13, 110, 253, 0.3);
+}
