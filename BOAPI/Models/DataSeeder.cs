@@ -10,26 +10,37 @@ namespace BOAPI.Data
             using var context = new BOContext(
                 serviceProvider.GetRequiredService<DbContextOptions<BOContext>>());
 
-            SeedCheckListSecuritePatient(context);
-            SeedCheckListAnesthesie(context);
-            SeedCheckListHygiene(context);
-            SeedCheckListTransfusion(context);
-            SeedCheckListRadioprotection(context);
-            SeedCheckListLogistique(context);
-            SeedPersonnel(context);
+            try
+            {
+                SeedCheckListSecuritePatient(context);
+                SeedCheckListAnesthesie(context);
+                SeedCheckListHygiene(context);
+                SeedCheckListTransfusion(context);
+                SeedCheckListRadioprotection(context);
+                SeedCheckListLogistique(context);
+                SeedPersonnel(context);
+                
+                Console.WriteLine("Seed des données terminé avec succès !");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erreur lors du seed des données: {ex.Message}");
+                throw;
+            }
         }
 
-        // ✅ 1. CheckList Sécurité Patient
+        // ✅ 1. CheckList Sécurité Patient - VERSION CORRIGÉE
         public static void SeedCheckListSecuritePatient(BOContext context)
         {
             var existingCheckList = context.CheckLists
                 .Include(c => c.Etapes)
                     .ThenInclude(e => e.Questions)
-                .AsSplitQuery() // ← pour éviter le warning EF Core
+                .AsSplitQuery()
                 .FirstOrDefault(c => c.Libelle == "CHECK-LIST « SÉCURITÉ DU PATIENT AU BLOC OPÉRATOIRE »");
 
             if (existingCheckList == null)
             {
+                // Créer une nouvelle checklist
                 existingCheckList = new CheckList
                 {
                     Libelle = "CHECK-LIST « SÉCURITÉ DU PATIENT AU BLOC OPÉRATOIRE »",
@@ -40,6 +51,7 @@ namespace BOAPI.Data
                     Etapes = new List<Etape>()
                 };
                 context.CheckLists.Add(existingCheckList);
+                context.SaveChanges(); // Sauvegarder pour obtenir l'ID
             }
 
             // Mise à jour des propriétés principales
@@ -47,14 +59,47 @@ namespace BOAPI.Data
             existingCheckList.Description = "Vérifier ensemble pour décider";
             existingCheckList.EstActive = true;
 
-            // Supprimer les anciennes étapes et questions
+            // APPROCHE SÉCURISÉE : Gérer la suppression des réponses d'abord
             if (existingCheckList.Etapes.Any())
             {
-                context.Questions.RemoveRange(existingCheckList.Etapes.SelectMany(e => e.Questions));
-                context.Etapes.RemoveRange(existingCheckList.Etapes);
+                // 1. Récupérer tous les IDs des questions existantes
+                var questionIds = existingCheckList.Etapes
+                    .SelectMany(e => e.Questions)
+                    .Select(q => q.Id)
+                    .ToList();
+
+                // 2. Supprimer d'abord les réponses associées à ces questions
+                if (questionIds.Any())
+                {
+                    var answersToDelete = context.FormAnswers
+                        .Where(fa => questionIds.Contains(fa.QuestionId))
+                        .ToList();
+                    
+                    if (answersToDelete.Any())
+                    {
+                        context.FormAnswers.RemoveRange(answersToDelete);
+                        context.SaveChanges();
+                    }
+                }
+
+                // 3. Maintenant supprimer les questions
+                var questionsToDelete = existingCheckList.Etapes
+                    .SelectMany(e => e.Questions)
+                    .ToList();
+                
+                context.Questions.RemoveRange(questionsToDelete);
+                context.SaveChanges();
+
+                // 4. Enfin supprimer les étapes
+                var etapesToDelete = existingCheckList.Etapes.ToList();
+                context.Etapes.RemoveRange(etapesToDelete);
+                context.SaveChanges();
+
+                // 5. Vider la collection
+                existingCheckList.Etapes.Clear();
             }
 
-            // Ajouter les nouvelles étapes
+            // Ajouter les nouvelles étapes conformes au formulaire
             existingCheckList.Etapes = new List<Etape>
             {
                 new Etape
@@ -63,35 +108,110 @@ namespace BOAPI.Data
                     Ordre = 0,
                     Questions = new List<Question>
                     {
-                        new Question { Texte = "L'identité du patient est correcte", Type = QuestionType.Boolean, EstObligatoire = true },
-                        new Question { Texte = "L'autorisation d'opérer est signée", Type = QuestionType.Boolean, EstObligatoire = true },
-                        new Question { Texte = "Intervention et site opératoire confirmés", Type = QuestionType.Boolean, EstObligatoire = true },
-                        new Question { Texte = "Mode d'installation cohérent et sûr", Type = QuestionType.Boolean, EstObligatoire = true },
-                        new Question { Texte = "Préparation cutanée documentée", Type = QuestionType.Boolean, EstObligatoire = true },
-                        new Question { Texte = "Matériel vérifié et adapté", Type = QuestionType.Boolean, EstObligatoire = true },
-                        new Question { Texte = "Risque allergique, inhalation, saignement ?", Type = QuestionType.BooleanNA }
+                        new Question { 
+                            Texte = "L'identité du patient est correcte", 
+                            Type = QuestionType.Boolean, 
+                            EstObligatoire = true
+                        },
+                        new Question { 
+                            Texte = "L'autorisation d'opérer est signée par les parents ou le représentant légal", 
+                            Type = QuestionType.Boolean, 
+                            EstObligatoire = true
+                        },
+                        new Question { 
+                            Texte = "L'intervention et le site opératoire sont confirmés : idéalement par le patient et, dans tous les cas, par le dossier ou procédure spécifique. La documentation clinique et sans clinique nécessaire est disponible en salle.", 
+                            Type = QuestionType.Boolean, 
+                            EstObligatoire = true
+                        },
+                        new Question { 
+                            Texte = "Le mode d'installation est connu de l'équipe en salle, cohérent avec le site/l'intervention et non dangereux pour le patient", 
+                            Type = QuestionType.Boolean, 
+                            EstObligatoire = true
+                        },
+                        new Question { 
+                            Texte = "La préparation cutanée de l'opéré est documentée dans la fiche de liaison service/bloc opératoire (ou autre procédure en œuvre dans l'établissement)", 
+                            Type = QuestionType.Boolean, 
+                            EstObligatoire = true
+                        },
+                        new Question { 
+                            Texte = "L'équipement/le matériel nécessaires pour l'intervention sont vérifiés et adaptés au poids et à la taille du patient (pour la partie chirurgicale et pour la partie anesthésique)", 
+                            Type = QuestionType.Boolean, 
+                            EstObligatoire = true
+                        },
+                        new Question { 
+                            Texte = "Le patient présente-t-il un : risque allergique, risque d'inhalation, de difficulté d'intubation ou de ventilation au masque, risque de saignement important", 
+                            Type = QuestionType.Boolean, 
+                            EstObligatoire = false
+                        }
                     }
                 },
                 new Etape
                 {
-                    Nom = "AVANT INTERVENTION CHIRURGICALE - Time-out",
+                    Nom = "AVANT INTERVENTION CHIRURGICALE - Temps de pause avant incision (time-out)",
                     Ordre = 1,
                     Questions = new List<Question>
                     {
-                        new Question { Texte = "Vérification ultime réalisée", Type = QuestionType.Boolean, EstObligatoire = true },
-                        new Question { Texte = "Partage des informations essentielles", Type = QuestionType.Boolean, EstObligatoire = true },
-                        new Question { Texte = "Antibiothérapie effectuée", Type = QuestionType.Boolean, EstObligatoire = true },
-                        new Question { Texte = "Préparation du champ opératoire correcte", Type = QuestionType.Boolean, EstObligatoire = true }
+                        new Question { 
+                            Texte = "Vérification « ultime » discutée au sein de l'équipe en présence des chirurgiens, anesthésistes, IADE-BODEF/IDE : identité patient confirmée, intervention prévue confirmée, site opératoire confirmé, installation correcte confirmée, documents nécessaires disponibles (notamment imagerie)", 
+                            Type = QuestionType.Boolean, 
+                            EstObligatoire = true
+                        },
+                        new Question { 
+                            Texte = "Partage des informations essentielles oralement au sein de l'équipe sur les éléments à risque/étapes critiques de l'intervention : sur le plan chirurgical (temps opératoire difficile, points spécifiques, identification des matériels) et sur le plan anesthésique (problèmes potentiels liés au monitorage)", 
+                            Type = QuestionType.Boolean, 
+                            EstObligatoire = true
+                        },
+                        new Question { 
+                            Texte = "L'antibiothérapie a été effectuée selon les recommandations et protocoles en vigueur dans l'établissement", 
+                            Type = QuestionType.Boolean, 
+                            EstObligatoire = true
+                        },
+                        new Question { 
+                            Texte = "La préparation du champ opératoire est réalisée selon le protocole en vigueur dans l'établissement", 
+                            Type = QuestionType.Boolean, 
+                            EstObligatoire = true
+                        }
                     }
                 },
                 new Etape
                 {
-                    Nom = "APRÈS INTERVENTION - Pause avant sortie",
+                    Nom = "APRÈS INTERVENTION - Pause avant sortie de salle d'opération",
                     Ordre = 2,
                     Questions = new List<Question>
                     {
-                        new Question { Texte = "Confirmation orale par l'équipe", Type = QuestionType.Boolean, EstObligatoire = true },
-                        new Question { Texte = "Prescriptions post-opératoires complètes", Type = QuestionType.Boolean, EstObligatoire = true }
+                        new Question { 
+                            Texte = "Confirmation orale par le personnel auprès de l'équipe : intervention enregistrée, compte final correct, compresses/aiguilles/instruments, étiquetage des prélèvements/pièces opératoires. Si événements indésirables : signalement/déclaration effectué.", 
+                            Type = QuestionType.BooleanNA, 
+                            EstObligatoire = true
+                        },
+                        new Question { 
+                            Texte = "Les prescriptions et la surveillance post-opératoires (y compris les seuils d'alerte spécifiques) sont faites complètement par l'équipe chirurgicale et anesthésique et adaptées à l'âge, au poids et à la taille du patient", 
+                            Type = QuestionType.Boolean, 
+                            EstObligatoire = true
+                        }
+                    }
+                },
+                new Etape
+                {
+                    Nom = "DÉCISION FINALE",
+                    Ordre = 3,
+                    Questions = new List<Question>
+                    {
+                        new Question { 
+                            Texte = "GO = OK pour incision", 
+                            Type = QuestionType.Boolean, 
+                            EstObligatoire = true
+                        },
+                        new Question { 
+                            Texte = "NO GO = Pas d'incision", 
+                            Type = QuestionType.Boolean, 
+                            EstObligatoire = false
+                        },
+                        new Question { 
+                            Texte = "Si NO GO, conséquence sur l'intervention : Retard ou Annulation", 
+                            Type = QuestionType.Boolean, 
+                            EstObligatoire = false
+                        }
                     }
                 }
             };
@@ -119,8 +239,8 @@ namespace BOAPI.Data
                         Ordre = 0,
                         Questions = new List<Question>
                         {
-                            new Question { Texte = "Machine d’anesthésie fonctionnelle ?", Type = QuestionType.Boolean, EstObligatoire = true },
-                            new Question { Texte = "Système d’aspiration vérifié ?", Type = QuestionType.Boolean, EstObligatoire = true },
+                            new Question { Texte = "Machine d'anesthésie fonctionnelle ?", Type = QuestionType.Boolean, EstObligatoire = true },
+                            new Question { Texte = "Système d'aspiration vérifié ?", Type = QuestionType.Boolean, EstObligatoire = true },
                             new Question { Texte = "Monitoring prêt ?", Type = QuestionType.Boolean, EstObligatoire = true }
                         }
                     },
@@ -158,7 +278,7 @@ namespace BOAPI.Data
                 {
                     new Etape
                     {
-                        Nom = "AVANT L’INTERVENTION",
+                        Nom = "AVANT L'INTERVENTION",
                         Ordre = 0,
                         Questions = new List<Question>
                         {
@@ -215,7 +335,7 @@ namespace BOAPI.Data
             {
                 Libelle = "CHECK-LIST « RADIOPROTECTION »",
                 Version = "2018",
-                Description = "Protection contre l’irradiation",
+                Description = "Protection contre l'irradiation",
                 DateCreation = DateTime.UtcNow,
                 EstActive = true,
                 Etapes = new List<Etape>

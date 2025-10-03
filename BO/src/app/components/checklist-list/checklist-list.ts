@@ -67,6 +67,327 @@ export class CheckListListComponent implements OnInit {
     this.loadChecklists();
   }
 
+  // === NOUVELLES MÉTHODES POUR L'IMPRESSION ===
+
+  // Générer un rapport d'impression complet pour une soumission
+  printSubmission(submission: SubmissionWithDetails): void {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('Veuillez autoriser les pop-ups pour l\'impression');
+      return;
+    }
+
+    const counts = this.countResponsesByType(submission);
+    const status = this.getSubmissionStatus(submission);
+
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Rapport Checklist - ${submission.checklistName}</title>
+        <style>
+          body { 
+            font-family: Arial, sans-serif; 
+            line-height: 1.4; 
+            margin: 20px; 
+            color: #333;
+          }
+          .header { 
+            border-bottom: 3px solid #2c3e50; 
+            padding-bottom: 15px; 
+            margin-bottom: 20px;
+          }
+          .header h1 { 
+            color: #2c3e50; 
+            margin: 0; 
+            font-size: 24px;
+          }
+          .header-info { 
+            display: flex; 
+            justify-content: space-between; 
+            margin-top: 10px;
+            font-size: 14px;
+          }
+          .summary { 
+            background: #f8f9fa; 
+            padding: 15px; 
+            border-radius: 5px; 
+            margin-bottom: 20px;
+            border-left: 4px solid #3498db;
+          }
+          .summary-stats { 
+            display: flex; 
+            gap: 20px; 
+            margin-top: 10px;
+          }
+          .stat { 
+            text-align: center; 
+            padding: 10px;
+          }
+          .stat-count { 
+            font-size: 24px; 
+            font-weight: bold; 
+            display: block;
+          }
+          .stat-yes { color: #27ae60; }
+          .stat-no { color: #e74c3c; }
+          .stat-na { color: #95a5a6; }
+          .stat-text { color: #3498db; }
+          .etape { 
+            margin-bottom: 25px; 
+            page-break-inside: avoid;
+          }
+          .etape-title { 
+            background: #34495e; 
+            color: white; 
+            padding: 10px 15px; 
+            border-radius: 5px; 
+            margin-bottom: 10px;
+            font-weight: bold;
+          }
+          .question { 
+            margin-bottom: 15px; 
+            padding: 10px; 
+            border: 1px solid #ddd; 
+            border-radius: 5px;
+            page-break-inside: avoid;
+          }
+          .question-text { 
+            font-weight: bold; 
+            margin-bottom: 8px;
+          }
+          .answer { 
+            padding: 5px 10px; 
+            border-radius: 3px; 
+            display: inline-block;
+            font-weight: bold;
+          }
+          .answer-yes { background: #d5f4e6; color: #27ae60; }
+          .answer-no { background: #fadbd8; color: #e74c3c; }
+          .answer-na { background: #ecf0f1; color: #7f8c8d; }
+          .answer-text { background: #d6eaf8; color: #2980b9; }
+          .answer-empty { background: #f2f3f4; color: #95a5a6; font-style: italic; }
+          .signature-area { 
+            margin-top: 50px; 
+            border-top: 2px solid #000; 
+            padding-top: 20px;
+          }
+          .signature-line { 
+            display: inline-block; 
+            width: 200px; 
+            border-top: 1px solid #000; 
+            margin: 0 20px;
+          }
+          @media print {
+            body { margin: 15px; }
+            .summary { background: #f8f9fa !important; }
+            .no-print { display: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>${submission.checklistName}</h1>
+          <div class="header-info">
+            <div><strong>Date :</strong> ${this.formatDate(submission.submittedAt)}</div>
+            <div><strong>Statut :</strong> <span style="color: ${
+              status.class === 'status-complete' ? '#27ae60' : 
+              status.class === 'status-partial' ? '#f39c12' : '#e74c3c'
+            }">${status.text}</span></div>
+          </div>
+        </div>
+
+        <div class="summary">
+          <h3>📊 RÉSUMÉ DES RÉPONSES</h3>
+          <div class="summary-stats">
+            <div class="stat">
+              <span class="stat-count stat-yes">${counts.oui}</span>
+              <span>✅ Oui</span>
+            </div>
+            <div class="stat">
+              <span class="stat-count stat-no">${counts.non}</span>
+              <span>❌ Non</span>
+            </div>
+            <div class="stat">
+              <span class="stat-count stat-na">${counts.na}</span>
+              <span>⚪ N/A</span>
+            </div>
+            <div class="stat">
+              <span class="stat-count stat-text">${counts.texte}</span>
+              <span>📝 Texte</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="content">
+          ${this.generateSubmissionContent(submission)}
+        </div>
+
+        <div class="signature-area">
+          <p><strong>Checklist validée par l'équipe :</strong></p>
+          <br><br>
+          <div>
+            <span>Chirurgien</span>
+            <span class="signature-line"></span>
+            <span>Anesthésiste / IADE</span>
+            <span class="signature-line"></span>
+            <span>Coordonnateur</span>
+          </div>
+        </div>
+
+        <div class="no-print" style="margin-top: 20px; text-align: center;">
+          <button onclick="window.print()" style="padding: 10px 20px; background: #3498db; color: white; border: none; border-radius: 5px; cursor: pointer;">
+            🖨️ Imprimer ce rapport
+          </button>
+          <button onclick="window.close()" style="padding: 10px 20px; background: #95a5a6; color: white; border: none; border-radius: 5px; cursor: pointer; margin-left: 10px;">
+            ❌ Fermer
+          </button>
+        </div>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+  }
+
+  // Générer le contenu détaillé de la soumission
+  private generateSubmissionContent(submission: FormSubmissionDto): string {
+    let content = '';
+    
+    // Organiser les réponses par étape
+    const reponsesParEtape = this.organizeResponsesByEtape(submission);
+    
+    reponsesParEtape.forEach((reponses, nomEtape) => {
+      content += `
+        <div class="etape">
+          <div class="etape-title">${nomEtape}</div>
+      `;
+      
+      reponses.forEach(reponse => {
+        const questionText = this.getQuestionText(reponse.questionId);
+        const answerClass = this.getAnswerClass(reponse.reponse);
+        const answerText = reponse.reponse || 'Non renseigné';
+        
+        content += `
+          <div class="question">
+            <div class="question-text">${questionText}</div>
+            <div class="answer ${answerClass}">${answerText}</div>
+          </div>
+        `;
+      });
+      
+      content += `</div>`;
+    });
+    
+    return content;
+  }
+
+  // Organiser les réponses par étape
+  private organizeResponsesByEtape(submission: FormSubmissionDto): Map<string, any[]> {
+    const reponsesParEtape = new Map<string, any[]>();
+    
+    submission.reponses.forEach(reponse => {
+      const etape = this.findEtapeByQuestionId(reponse.questionId);
+      const nomEtape = etape?.nom || 'Étape inconnue';
+      
+      if (!reponsesParEtape.has(nomEtape)) {
+        reponsesParEtape.set(nomEtape, []);
+      }
+      
+      reponsesParEtape.get(nomEtape)!.push(reponse);
+    });
+    
+    return reponsesParEtape;
+  }
+
+  // Trouver l'étape d'une question par son ID
+  private findEtapeByQuestionId(questionId: number): EtapeFrontend | null {
+    for (const checklist of this.checklists) {
+      for (const etape of checklist.etapes) {
+        for (const question of etape.questions) {
+          if (question.id === questionId) {
+            return etape;
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  // Imprimer toutes les soumissions (rapport global)
+  printAllSubmissions(): void {
+    if (this.submissions.length === 0) {
+      alert('Aucune soumission à imprimer');
+      return;
+    }
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('Veuillez autoriser les pop-ups pour l\'impression');
+      return;
+    }
+
+    let content = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Rapport Global des Checklists</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 20px; }
+          .header { text-align: center; border-bottom: 3px solid #2c3e50; padding-bottom: 15px; }
+          .submission { margin-bottom: 30px; border: 1px solid #ddd; padding: 15px; border-radius: 5px; }
+          .submission-header { background: #f8f9fa; padding: 10px; border-radius: 3px; margin-bottom: 10px; }
+          .stats { display: flex; gap: 15px; margin: 10px 0; }
+          .stat { padding: 5px 10px; border-radius: 3px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>Rapport Global des Checklists</h1>
+          <p>Généré le ${new Date().toLocaleDateString('fr-FR')}</p>
+        </div>
+    `;
+
+    this.submissions.forEach((submission, index) => {
+      const counts = this.countResponsesByType(submission);
+      const status = this.getSubmissionStatus(submission);
+      
+      content += `
+        <div class="submission">
+          <div class="submission-header">
+            <h3>${submission.checklistName} - ${this.formatDate(submission.submittedAt)}</h3>
+            <div class="stats">
+              <span class="stat" style="background:#d5f4e6;color:#27ae60;">✅ ${counts.oui} Oui</span>
+              <span class="stat" style="background:#fadbd8;color:#e74c3c;">❌ ${counts.non} Non</span>
+              <span class="stat" style="background:#ecf0f1;color:#7f8c8d;">⚪ ${counts.na} N/A</span>
+              <span class="stat" style="background:#d6eaf8;color:#2980b9;">📝 ${counts.texte} Texte</span>
+              <span class="stat" style="background:${
+                status.class === 'status-complete' ? '#d5f4e6' : 
+                status.class === 'status-partial' ? '#fdebd0' : '#fadbd8'
+              };">${status.text}</span>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+
+    content += `
+        <div class="no-print" style="text-align: center; margin-top: 20px;">
+          <button onclick="window.print()" style="padding: 10px 20px; background: #3498db; color: white; border: none; border-radius: 5px; cursor: pointer;">
+            🖨️ Imprimer le rapport global
+          </button>
+        </div>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(content);
+    printWindow.document.close();
+  }
+
+  // === MÉTHODES EXISTANTES (conservées) ===
+
   // --- Charger les checklists depuis le backend ---
   loadChecklists(): void {
     this.checklistService.getAllCheckLists().subscribe({
@@ -98,14 +419,13 @@ export class CheckListListComponent implements OnInit {
     });
   }
 
-  // === NOUVELLES MÉTHODES POUR L'HISTORIQUE ===
+  // === MÉTHODES POUR L'HISTORIQUE ===
 
   // Charger toutes les soumissions (pour toutes les checklists)
   loadAllSubmissions(): void {
     this.submissionsLoading = true;
     this.submissions = [];
     
-    // Charger les soumissions pour chaque checklist
     const submissionPromises = this.checklists.map(checklist => 
       this.checklistService.getChecklistSubmissions(checklist.id!).toPromise()
     );
@@ -125,7 +445,6 @@ export class CheckListListComponent implements OnInit {
         }
       });
       
-      // Trier par date (plus récent en premier)
       this.submissions.sort((a, b) => 
         new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
       );
@@ -427,8 +746,6 @@ export class CheckListListComponent implements OnInit {
   createNewChecklist(): void {
     this.router.navigate(['/checklists/new']);
   }
-
-
 
   // === MÉTHODES POUR LES CHAMPS ADAPTATIFS ===
   getInputWidth(value: string | undefined | null, minWidth: number = 200): string {

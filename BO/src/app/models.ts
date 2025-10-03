@@ -49,6 +49,8 @@ export interface FormResponseDto {
   reponses: QuestionResponseDto[];
   submittedBy?: string;
   submittedAt?: string;
+    decisionFinale?: string;  
+  consequence?: string;    
 }
 
 export interface FormSubmissionDto {
@@ -57,6 +59,8 @@ export interface FormSubmissionDto {
   submittedBy: string;
   submittedAt: string;
   reponses: QuestionResponseDto[];
+   decisionFinale?: string;  
+  consequence?: string;    
 }
 
 // === INTERFACES POUR LA CRÉATION ===

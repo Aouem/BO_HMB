@@ -220,9 +220,14 @@
   <div *ngIf="activeTab === 'history'" class="tab-content">
     <div class="history-header">
       <h2>📊 Historique des Soumissions</h2>
-      <button class="btn creative-btn btn-secondary" (click)="activeTab = 'edit'">
-        ← Retour à l'édition
-      </button>
+      <div class="history-actions">
+        <button class="btn creative-btn btn-secondary" (click)="activeTab = 'edit'">
+          ← Retour à l'édition
+        </button>
+        <button *ngIf="submissions.length > 0" class="btn creative-btn btn-primary" (click)="printAllSubmissions()">
+          🖨️ Imprimer tout l'historique
+        </button>
+      </div>
     </div>
 
     <!-- Loading historique -->
@@ -248,6 +253,7 @@
               <th>Utilisateur</th>
               <th>Statut</th>
               <th>Actions</th>
+              <th>Impression</th>
             </tr>
           </thead>
           <tbody>
@@ -266,6 +272,12 @@
                   class="btn creative-btn btn-info" 
                   (click)="showSubmissionDetails(submission)">
                   📋 Détails
+                </button>
+              </td>
+              <td class="print-actions">
+                <!-- BOUTON CORRIGÉ : utilisation de (click) au lieu de onclick -->
+                <button class="btn creative-btn btn-print" (click)="printSubmission(submission)">
+                  🖨️ Imprimer
                 </button>
               </td>
             </tr>
@@ -329,6 +341,10 @@
           <div class="modal-footer">
             <button class="btn creative-btn btn-secondary" (click)="hideSubmissionDetails()">
               Fermer
+            </button>
+            <!-- Bouton d'impression dans le modal -->
+            <button class="btn creative-btn btn-primary" (click)="printSubmission(selectedSubmission)">
+              🖨️ Imprimer cette soumission
             </button>
           </div>
         </div>

@@ -35,9 +35,22 @@ export class ChecklistFormulaireComponent implements OnInit {
   reponsesPartielles: QuestionResponseDto[] = [];
   etapesValidees: boolean[] = [];
 
+  // DÉCISION FINALE
+  decisionFinale: string = '';
+  consequence: string = '';
+
   // affichage
   mode: 'etape' | 'question' = 'etape';
   autoAdvance: boolean = true;
+
+  // Impression
+  showPrintModal = false;
+  patientNom = 'Nom du Patient'; // À adapter avec vos données
+  interventionType = 'Intervention Chirurgicale'; // À adapter avec vos données
+  currentDate = new Date();
+
+  // Mapping des questions pour l'impression - CORRIGÉ
+  questionMapping: { [key: string]: number } = {};
 
   constructor(
     private formService: FormService,
@@ -90,8 +103,11 @@ export class ChecklistFormulaireComponent implements OnInit {
     this.etapesValidees = [];
     this.currentEtapeIndex = 0;
     this.currentQuestionIndex = 0;
+    this.decisionFinale = '';
+    this.consequence = '';
     this.submitted = false;
     this.mode = 'etape';
+    this.questionMapping = {};
   }
 
   // Méthode utilitaire pour calculer le total des questions d'une checklist
@@ -100,7 +116,75 @@ export class ChecklistFormulaireComponent implements OnInit {
     return checklist.etapes.reduce((total, etape) => total + (etape.questions?.length || 0), 0);
   }
 
-  // === MÉTHODES EXISTANTES (conservées avec quelques ajustements) ===
+  // === GESTION DE LA DÉCISION FINALE ===
+
+  onDecisionSelected(decision: string): void {
+    this.decisionFinale = decision;
+    
+    // Réinitialiser la conséquence si on change de "Non" à "Oui"
+    if (decision === 'Oui') {
+      this.consequence = '';
+    }
+    
+    this.savePartialProgress();
+  }
+
+  onConsequenceSelected(consequence: string): void {
+    this.consequence = consequence;
+    this.savePartialProgress();
+  }
+
+  // Classes CSS pour les boutons de décision
+  getDecisionBtnClasses(value: string): string {
+    if (this.decisionFinale === value) {
+      return value === 'Oui' ? 'btn-success' : 'btn-danger';
+    }
+    return 'btn-outline-primary';
+  }
+
+  // Classes CSS pour les boutons de conséquence
+  getConsequenceBtnClasses(value: string): string {
+    if (this.consequence === value) {
+      return 'btn-warning';
+    }
+    return 'btn-outline-secondary';
+  }
+
+  // Validation de la décision
+  isDecisionComplete(): boolean {
+    if (this.decisionFinale === 'Oui') {
+      return true; // "Oui" ne nécessite pas de conséquence
+    } else if (this.decisionFinale === 'Non') {
+      return !!this.consequence; // "Non" nécessite une conséquence
+    }
+    return false; // Aucune décision sélectionnée
+  }
+
+  // Texte de statut
+  getDecisionStatusText(): string {
+    if (this.decisionFinale === 'Oui') {
+      return '✅ Décision : GO - Intervention validée';
+    } else if (this.decisionFinale === 'Non' && this.consequence) {
+      return `❌ Décision : NO GO - ${this.consequence}`;
+    } else if (this.decisionFinale === 'Non') {
+      return '❌ Décision : NO GO - Sélectionnez une conséquence';
+    }
+    return '⏳ En attente de décision';
+  }
+
+  // Classe CSS pour le statut
+  getDecisionStatusClass(): string {
+    if (this.decisionFinale === 'Oui') {
+      return 'status-success';
+    } else if (this.decisionFinale === 'Non' && this.consequence) {
+      return 'status-warning';
+    } else if (this.decisionFinale === 'Non') {
+      return 'status-danger';
+    }
+    return 'status-info';
+  }
+
+  // === MÉTHODES EXISTANTES ===
 
   private loadCurrentUser(): void {
     this.currentUser = localStorage.getItem('currentUser') || 'utilisateur_anonyme';
@@ -114,6 +198,9 @@ export class ChecklistFormulaireComponent implements OnInit {
       next: (checklist: CheckListDto) => {
         this.checklistNom = checklist.libelle;
         this.etapes = checklist.etapes;
+
+        // Initialiser le mapping des questions POUR L'IMPRESSION
+        this.initializeQuestionMappingForPrint();
 
         // Initialisation sécurisée des étapes validées
         this.etapesValidees = new Array(this.etapes.length).fill(false);
@@ -141,6 +228,55 @@ export class ChecklistFormulaireComponent implements OnInit {
         alert('Erreur lors du chargement de la checklist.');
       }
     });
+  }
+
+  // === NOUVELLE MÉTHODE POUR INITIALISER LE MAPPING POUR L'IMPRESSION ===
+  private initializeQuestionMappingForPrint(): void {
+    this.questionMapping = {};
+    
+    // Mapping fixe pour la checklist bloc opératoire
+    const printQuestions = [
+      // Avant induction anesthésique
+      { key: 'identite_patient', text: "L'identité du patient est correcte" },
+      { key: 'autorisation_operer', text: "L'autorisation d'opérer est signée par les parents ou le représentant légal" },
+      { key: 'intervention_site', text: "L'intervention et le site opératoire sont confirmés" },
+      { key: 'mode_installation', text: "Le mode d'installation est connu de l'équipe en salle" },
+      { key: 'preparation_cutanee', text: "La préparation cutanée de l'opéré est documentée" },
+      { key: 'equipement_materiel', text: "L'équipement / le matériel nécessaires pour l'intervention sont vérifiés" },
+      
+      // Avant intervention chirurgicale
+      { key: 'verification_ultime', text: "Vérification « ultime » cuisée au sein de l'équipe" },
+      { key: 'partage_informations', text: "Partage des informations essentielles oralement au sein de l'équipe" },
+      
+      // Après intervention
+      { key: 'confirmation_orale', text: "Confirmation orale par le personnel auprès de l'équipe" },
+      { key: 'prescriptions_surveillance', text: "Les prescriptions et la surveillance post-opératoires" }
+    ];
+
+    // Associer chaque question d'impression à une question réelle de la checklist
+    printQuestions.forEach(printQuestion => {
+      const realQuestion = this.findQuestionByText(printQuestion.text);
+      if (realQuestion) {
+        this.questionMapping[printQuestion.key] = realQuestion.id;
+      } else {
+        console.warn(`⚠️ Question non trouvée: ${printQuestion.text}`);
+      }
+    });
+
+    console.log('🗺️ Mapping des questions pour impression:', this.questionMapping);
+  }
+
+  // Trouver une question par son texte (approximatif)
+  private findQuestionByText(searchText: string): QuestionDto | null {
+    for (const etape of this.etapes) {
+      for (const question of etape.questions) {
+        // Recherche approximative dans le texte de la question
+        if (question.texte.toLowerCase().includes(searchText.toLowerCase().substring(0, 30))) {
+          return question;
+        }
+      }
+    }
+    return null;
   }
 
   // === GETTERS ===
@@ -209,12 +345,12 @@ export class ChecklistFormulaireComponent implements OnInit {
       this.savePartialProgress();
 
       if (this.currentEtapeIndex === this.etapes.length - 1) {
-        this.submitFinalForm();
+        // Toutes les étapes sont validées, on reste en mode étape pour la décision finale
+        this.mode = 'etape';
       } else {
         // passer à l'étape suivante
         this.currentEtapeIndex++;
         this.currentQuestionIndex = 0;
-        this.mode = 'etape';
         this.savePartialProgress();
       }
     }
@@ -279,18 +415,119 @@ export class ChecklistFormulaireComponent implements OnInit {
   }
 
   onAnswerSelected(questionId: number, value: string) {
-    const response: QuestionResponseDto = { questionId, reponse: value };
-    const existingIndex = this.reponsesPartielles.findIndex(r => r.questionId === questionId);
+    const currentQuestion = this.currentQuestion;
+    if (!currentQuestion) {
+      console.error('❌ Aucune question courante');
+      return;
+    }
 
-    if (existingIndex >= 0) this.reponsesPartielles[existingIndex] = response;
-    else this.reponsesPartielles.push(response);
+    const realQuestionId = currentQuestion.id;
+    
+    console.log(`🎯 Réponse enregistrée - QuestionID: ${realQuestionId}, Réponse: ${value}`);
 
+    const response: QuestionResponseDto = { 
+      questionId: realQuestionId,
+      reponse: value 
+    };
+    
+    const existingIndex = this.reponsesPartielles.findIndex(r => r.questionId === realQuestionId);
+
+    if (existingIndex >= 0) {
+      this.reponsesPartielles[existingIndex] = response;
+    } else {
+      this.reponsesPartielles.push(response);
+    }
+
+    console.log('📊 Réponses partielles mises à jour:', this.reponsesPartielles);
     this.savePartialProgress();
 
-    // Avancer automatiquement si on est en mode question
+    // Avancer automatiquement
     if (this.mode === 'question' && this.autoAdvance && this.canGoNext()) {
       if (!this.isLastQuestionInEtape) this.nextQuestion();
     }
+  }
+
+  // === SUBMIT ===
+  submitFinalForm() {
+    this.debugChecklistQuestions();
+
+    if (this.reponsesPartielles.length === 0) {
+      alert('Aucune réponse à soumettre !');
+      return;
+    }
+
+    const validQuestionIds = new Set<number>();
+    this.etapes.forEach(etape => {
+      etape.questions.forEach(question => {
+        validQuestionIds.add(question.id);
+      });
+    });
+
+    const invalidResponses = this.reponsesPartielles.filter(reponse => 
+      !validQuestionIds.has(reponse.questionId)
+    );
+
+    if (invalidResponses.length > 0) {
+      console.error('❌ Réponses avec questionId invalides:', invalidResponses);
+      alert(`Erreur: ${invalidResponses.length} réponse(s) ont des IDs de question invalides. Voir la console.`);
+      return;
+    }
+
+    const toutesEtapesValidees = this.etapes.every((_, index) => this.isEtapeComplete(index));
+    if (!toutesEtapesValidees) {
+      alert('Veuillez compléter toutes les étapes avant de soumettre.');
+      return;
+    }
+
+    if (!this.isDecisionComplete()) {
+      alert('Veuillez compléter la décision finale avant de soumettre.');
+      return;
+    }
+
+    // Créer la soumission
+    const formData: FormResponseDto = {
+      checkListId: this.checklistId,
+      reponses: this.reponsesPartielles,
+      submittedBy: this.currentUser,
+      submittedAt: new Date().toISOString(),
+      decisionFinale: this.decisionFinale,
+      consequence: this.consequence
+    };
+
+    console.log('📤 Données validées envoyées:', formData);
+
+    this.loading = true;
+    
+    this.formService.submitForm(formData).subscribe({
+      next: (response: FormSubmissionDto) => {
+        console.log('✅ Soumission réussie avec réponses:', response);
+        this.submitted = true;
+        this.loading = false;
+        
+        localStorage.removeItem(`checklist_${this.checklistId}_progress`);
+        alert(`Formulaire soumis avec succès !\nID: ${response.id}\nRéponses: ${response.reponses?.length || 0}`);
+      },
+      error: (err: any) => {
+        console.error('❌ Erreur de soumission:', err);
+        this.loading = false;
+        alert('Erreur lors de la soumission du formulaire');
+      }
+    });
+  }
+
+  debugChecklistQuestions(): void {
+    console.log('🐛 DEBUG - Questions de la checklist:');
+    this.etapes.forEach((etape, etapeIndex) => {
+      console.log(`Étape ${etapeIndex + 1} (${etape.nom}):`);
+      etape.questions.forEach((question, questionIndex) => {
+        console.log(`  Q${questionIndex + 1}: ID=${question.id}, Texte="${question.texte}"`);
+      });
+    });
+    
+    console.log('📝 Réponses partielles actuelles:');
+    this.reponsesPartielles.forEach(reponse => {
+      console.log(`  QuestionId: ${reponse.questionId}, Réponse: ${reponse.reponse}`);
+    });
   }
 
   // === STORAGE ===
@@ -301,6 +538,8 @@ export class ChecklistFormulaireComponent implements OnInit {
       currentEtape: this.currentEtapeIndex,
       currentQuestion: this.currentQuestionIndex,
       etapesValidees: this.etapesValidees,
+      decisionFinale: this.decisionFinale,
+      consequence: this.consequence,
       mode: this.mode
     };
     localStorage.setItem(`checklist_${this.checklistId}_progress`, JSON.stringify(partialData));
@@ -315,6 +554,8 @@ export class ChecklistFormulaireComponent implements OnInit {
         this.currentEtapeIndex = Number.isInteger(progress.currentEtape) ? progress.currentEtape : 0;
         this.currentQuestionIndex = Number.isInteger(progress.currentQuestion) ? progress.currentQuestion : 0;
         this.etapesValidees = progress.etapesValidees || new Array(this.etapes.length).fill(false);
+        this.decisionFinale = progress.decisionFinale || '';
+        this.consequence = progress.consequence || '';
         this.mode = progress.mode || 'etape';
       } catch (_e) {
         // ignore
@@ -328,58 +569,14 @@ export class ChecklistFormulaireComponent implements OnInit {
     });
   }
 
-  // === SUBMIT ===
-  submitFinalForm() {
-    if (this.reponsesPartielles.length === 0) {
-      alert('Aucune réponse à soumettre !');
-      return;
-    }
-
-    const toutesEtapesValidees = this.etapes.every((_, index) => this.isEtapeComplete(index));
-    if (!toutesEtapesValidees) {
-      alert('Veuillez compléter toutes les étapes avant de soumettre.');
-      return;
-    }
-
-    // Créer la soumission avec date et utilisateur
-    const formData: FormResponseDto = {
-      checkListId: this.checklistId,
-      reponses: this.reponsesPartielles,
-      submittedBy: this.currentUser,
-      submittedAt: new Date().toISOString()
-    };
-
-    console.log('Nouvelle soumission:', formData);
-
-    this.loading = true;
-    
-    // Utiliser FormService pour la soumission
-    this.formService.submitForm(formData).subscribe({
-      next: (response: FormSubmissionDto) => {
-        console.log('Soumission réussie:', response);
-        this.submitted = true;
-        this.loading = false;
-        
-        // Nettoyer la progression locale MAIS garder l'historique dans la base
-        localStorage.removeItem(`checklist_${this.checklistId}_progress`);
-        
-        // Afficher un message de succès avec l'ID de soumission
-        alert(`Formulaire soumis avec succès !\nID de soumission: ${response.id}\nDate: ${new Date(response.submittedAt).toLocaleString()}`);
-      },
-      error: (err: any) => {
-        console.error('Erreur de soumission:', err);
-        this.loading = false;
-        alert('Erreur lors de la soumission du formulaire');
-      }
-    });
-  }
-
   // === RESET ===
   resetForm() {
     this.currentEtapeIndex = 0;
     this.currentQuestionIndex = 0;
     this.reponsesPartielles = [];
     this.etapesValidees = new Array(this.etapes.length).fill(false);
+    this.decisionFinale = '';
+    this.consequence = '';
     this.mode = 'etape';
     this.submitted = false;
     localStorage.removeItem(`checklist_${this.checklistId}_progress`);
@@ -404,29 +601,7 @@ export class ChecklistFormulaireComponent implements OnInit {
   }
 
   previewSoumission(): void {
-    alert(`Prévisualisation: ${this.reponsesPartielles.length} réponses`);
-  }
-
-  forcerValidationEtape(etapeIndex: number): void {
-    if (this.isEtapeComplete(etapeIndex)) {
-      this.etapesValidees[etapeIndex] = true;
-      this.savePartialProgress();
-      alert(`Étape ${etapeIndex + 1} validée.`);
-    } else {
-      alert(`Étape ${etapeIndex + 1} incomplète. Veuillez répondre à toutes les questions.`);
-    }
-  }
-
-  getEtapesCompletesNonValidees(): number[] {
-    const nonValidatedEtapes: number[] = [];
-    
-    this.etapes.forEach((_, index) => {
-      if (this.isEtapeComplete(index) && !this.etapesValidees[index]) {
-        nonValidatedEtapes.push(index);
-      }
-    });
-
-    return nonValidatedEtapes;
+    alert(`Prévisualisation: ${this.reponsesPartielles.length} réponses\nDécision finale: ${this.decisionFinale || 'Non définie'}`);
   }
 
   getChoiceBtnClasses(questionId: number, value: string): string {
@@ -441,62 +616,233 @@ export class ChecklistFormulaireComponent implements OnInit {
     return selected ? styles.on : styles.off;
   }
 
-  answerBadgeClass(value: string): string {
-    switch (value) {
-      case 'Oui': return 'bg-success';
-      case 'Non': return 'bg-danger';
-      case 'N/A': return 'bg-secondary';
-      default:    return 'bg-primary';
+  // === MÉTHODES POUR L'IMPRESSION - CORRIGÉES ===
+
+  // Vérifier si une question spécifique est cochée POUR L'IMPRESSION
+  isQuestionCheckedForPrint(questionKey: string, value: string): boolean {
+    const questionId = this.questionMapping[questionKey];
+    if (!questionId) {
+      console.warn(`⚠️ Question non trouvée dans le mapping: ${questionKey}`);
+      return false;
+    }
+    
+    const response = this.getQuestionResponse(questionId);
+    console.log(`🔍 Vérification impression - Clé: ${questionKey}, ID: ${questionId}, Réponse: ${response}, Attendue: ${value}`);
+    
+    return response === value;
+  }
+
+  // === IMPRESSION ===
+  openPrintModal(): void {
+    this.showPrintModal = true;
+  }
+
+  closePrintModal(): void {
+    this.showPrintModal = false;
+  }
+
+  printChecklist(): void {
+    this.openPrintModal();
+  }
+
+  printChecklistNow(): void {
+    const printContent = document.getElementById('checklist-print-content');
+    const windowPrint = window.open('', '_blank', 'width=1024,height=724');
+    
+    if (windowPrint && printContent) {
+      windowPrint.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Checklist Sécurité du Patient au Bloc Opératoire</title>
+          <meta charset="UTF-8">
+          <style>
+            body { 
+              font-family: Arial, sans-serif; 
+              margin: 20px; 
+              line-height: 1.4;
+              font-size: 14px;
+              color: #000;
+            }
+            .print-header { 
+              text-align: center; 
+              margin-bottom: 20px;
+              border-bottom: 2px solid #000;
+              padding-bottom: 15px;
+            }
+            .print-header h1 {
+              font-size: 18px;
+              margin: 0 0 5px 0;
+              color: #000;
+            }
+            .print-header h2 {
+              font-size: 14px;
+              margin: 0 0 10px 0;
+              color: #666;
+            }
+            .print-motto {
+              font-style: italic;
+              margin: 5px 0;
+            }
+            .patient-info-print {
+              margin-top: 10px;
+              font-size: 12px;
+            }
+            hr {
+              border: 1px solid #000;
+              margin: 20px 0;
+            }
+            .print-section {
+              margin-bottom: 25px;
+            }
+            .print-section h2 {
+              font-size: 16px;
+              margin-bottom: 10px;
+              color: #000;
+              background: #f0f0f0;
+              padding: 5px 10px;
+            }
+            .print-subtitle {
+              font-weight: bold;
+              margin-bottom: 15px;
+            }
+            .print-item {
+              margin: 12px 0;
+              page-break-inside: avoid;
+            }
+            .print-item p {
+              margin: 5px 0;
+            }
+            .indented {
+              margin-left: 20px;
+              font-size: 13px;
+            }
+            .indented-small {
+              margin-left: 30px;
+              font-size: 12px;
+              font-style: italic;
+            }
+            .checkbox-print {
+              margin: 8px 0;
+              display: flex;
+              gap: 20px;
+            }
+            .checkbox-print span {
+              font-size: 13px;
+            }
+            .checkbox-print span.checked::before {
+              content: "☑";
+              margin-right: 5px;
+              font-weight: bold;
+            }
+            .checkbox-print span:not(.checked)::before {
+              content: "☐";
+              margin-right: 5px;
+            }
+            .decision-section {
+              background: #f8f8f8;
+              padding: 15px;
+              border: 1px solid #000;
+            }
+            .decision-finale-print {
+              margin: 15px 0;
+            }
+            .decision-option {
+              margin: 8px 0;
+            }
+            .decision-option span.checked::before {
+              content: "☑";
+              margin-right: 5px;
+              font-weight: bold;
+            }
+            .decision-option span:not(.checked)::before {
+              content: "☐";
+              margin-right: 5px;
+            }
+            .consequences-print {
+              margin-top: 15px;
+              padding-top: 10px;
+              border-top: 1px dashed #000;
+            }
+            .signatures-section {
+              margin-top: 40px;
+              page-break-inside: avoid;
+            }
+            .signature-title {
+              text-align: center;
+              margin-bottom: 5px;
+            }
+            .signature-subtitle {
+              text-align: center;
+              font-size: 12px;
+              margin-bottom: 20px;
+            }
+            .signatures-grid {
+              display: flex;
+              justify-content: space-between;
+              margin-top: 30px;
+            }
+            .signature-box {
+              width: 30%;
+              text-align: center;
+            }
+            .signature-line {
+              border-bottom: 1px solid #000;
+              margin-bottom: 5px;
+              height: 20px;
+            }
+            @media print {
+              body { 
+                margin: 10mm; 
+                font-size: 12px;
+              }
+              .print-header h1 { font-size: 16px; }
+              .print-section h2 { font-size: 14px; }
+              .no-print { display: none !important; }
+            }
+          </style>
+        </head>
+        <body>
+          ${printContent.innerHTML}
+        </body>
+        </html>
+      `);
+      windowPrint.document.close();
+      windowPrint.focus();
+      
+      setTimeout(() => {
+        windowPrint.print();
+      }, 500);
     }
   }
 
-  getAnswerCardClass(questionId: number) {
-    const response = this.getQuestionResponse(questionId);
-
-    return {
-      ok: response === 'Oui',
-      ko: response === 'Non',
-      na: response === 'N/A'
-    };
-  }
-
-  // Nouvelle méthode pour charger une soumission existante
-  loadExistingSubmission(submissionId: number): void {
-    this.formService.getFormSubmissions(this.checklistId).subscribe({
-      next: (submissions: FormSubmissionDto[]) => {
-        const submission = submissions.find(s => s.id === submissionId);
-        if (submission) {
-          // Charger les réponses dans l'interface
-          this.reponsesPartielles = [...submission.reponses];
-          this.savePartialProgress();
-          alert(`Soumission ${submissionId} chargée (${submission.reponses.length} réponses)`);
-        }
-      },
-      error: (err) => {
-        console.error('Erreur chargement soumission:', err);
-        alert('Erreur lors du chargement de la soumission');
-      }
-    });
-  }
-
-  // Méthode pour voir l'historique des soumissions
+  // === HISTORIQUE ===
   viewSubmissionHistory(): void {
+    if (!this.checklistId) {
+      alert('Veuillez d\'abord sélectionner une checklist');
+      return;
+    }
+
     this.formService.getFormSubmissions(this.checklistId).subscribe({
       next: (submissions: FormSubmissionDto[]) => {
         if (submissions.length === 0) {
-          alert('Aucune soumission historique trouvée.');
+          alert(`Aucune soumission trouvée pour "${this.checklistNom}" (ID: ${this.checklistId})`);
           return;
         }
 
-        const historyMessage = submissions.map(s => 
-          `Soumission #${s.id} - ${new Date(s.submittedAt).toLocaleString()} - Par: ${s.submittedBy} - ${s.reponses.length} réponses`
+        const sortedSubmissions = submissions.sort((a, b) => 
+          new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
+        );
+
+        const historyMessage = sortedSubmissions.map((s, index) => 
+          `#${index + 1} - ID: ${s.id} - ${new Date(s.submittedAt).toLocaleString('fr-FR')} - Par: ${s.submittedBy} - Réponses: ${s.reponses?.length || 0}`
         ).join('\n');
 
-        alert(`Historique des soumissions:\n\n${historyMessage}`);
+        alert(`📊 Historique pour "${this.checklistNom}" (${submissions.length} soumissions):\n\n${historyMessage}`);
       },
       error: (err) => {
-        console.error('Erreur historique:', err);
-        alert('Erreur lors du chargement de l\'historique');
+        console.error('❌ Erreur complète:', err);
+        alert('Erreur lors du chargement de l\'historique. Vérifiez la console.');
       }
     });
   }

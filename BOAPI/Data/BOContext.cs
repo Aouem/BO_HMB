@@ -7,16 +7,16 @@ namespace BOAPI.Data
     {
         public BOContext(DbContextOptions<BOContext> options) : base(options) { }
 
-        public DbSet<CheckList>      CheckLists      { get; set; } = null!;
-        public DbSet<Etape>          Etapes          { get; set; } = null!;
-        public DbSet<Question>       Questions       { get; set; } = null!;
+        public DbSet<CheckList> CheckLists { get; set; } = null!;
+        public DbSet<Etape> Etapes { get; set; } = null!;
+        public DbSet<Question> Questions { get; set; } = null!;
         public DbSet<ResponseOption> ResponseOptions { get; set; } = null!;
-        public DbSet<Personnel>      Personnels      { get; set; } = null!;
-        public DbSet<CheckListItem>  CheckListItems  { get; set; } = null!;
+        public DbSet<Personnel> Personnels { get; set; } = null!;
+        public DbSet<CheckListItem> CheckListItems { get; set; } = null!;
 
         // ✅ Historique des soumissions
         public DbSet<FormSubmission> FormSubmissions { get; set; } = null!;
-        public DbSet<FormAnswer>     FormAnswers     { get; set; } = null!;
+        public DbSet<FormAnswer> FormAnswers { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -73,7 +73,7 @@ namespace BOAPI.Data
                 .HasForeignKey(cli => cli.QuestionId)
                 .OnDelete(DeleteBehavior.SetNull);
 
-            // ===== ✅ Nouvelles relations pour l’historique =====
+            // ===== ✅ Nouvelles relations pour l'historique =====
             modelBuilder.Entity<FormSubmission>()
                 .HasOne(s => s.CheckList)
                 .WithMany() // pas de collection inverse requise
@@ -82,7 +82,7 @@ namespace BOAPI.Data
 
             modelBuilder.Entity<FormSubmission>()
                 .Property(s => s.SubmittedAt)
-                .HasDefaultValueSql("GETUTCDATE()");   // SQL Server (PostgreSQL: NOW())
+                .HasDefaultValueSql("GETUTCDATE()");
 
             modelBuilder.Entity<FormSubmission>()
                 .Property(s => s.SubmittedBy)
@@ -94,11 +94,12 @@ namespace BOAPI.Data
                 .HasForeignKey(a => a.SubmissionId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            // ✅ CONFIGURATION CORRIGÉE - Sans propriété de navigation inverse
             modelBuilder.Entity<FormAnswer>()
                 .HasOne(a => a.Question)
-                .WithMany()
+                .WithMany() // Sans propriété de navigation dans Question
                 .HasForeignKey(a => a.QuestionId)
-                .OnDelete(DeleteBehavior.Restrict);     // on conserve l’historique
+                .OnDelete(DeleteBehavior.Restrict); // Garder Restrict pour préserver l'historique
 
             modelBuilder.Entity<FormAnswer>()
                 .Property(a => a.Reponse)

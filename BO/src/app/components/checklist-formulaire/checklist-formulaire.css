@@ -1099,3 +1099,423 @@ button:hover { transform: translateY(-4px) scale(1.05); box-shadow: 0 8px 25px r
 
 /* Le reste du CSS existant pour le formulaire reste inchangé */
 /* ... (votre CSS existant pour les étapes, questions, etc.) ... */
+
+/* Styles pour la décision finale */
+.decision-finale-section {
+  margin-top: 2rem;
+  padding: 2rem;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 20px;
+  border: 3px solid #dee2e6;
+}
+
+.decision-card {
+  background: white;
+  padding: 2rem;
+  border-radius: 15px;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+  border-left: 6px solid #1f3c88;
+}
+
+.decision-title {
+  color: #1f3c88;
+  text-align: center;
+  margin-bottom: 1.5rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.decision-text {
+  text-align: center;
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  color: #2c3e50;
+}
+
+.decision-options {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.decision-option {
+  position: relative;
+  flex: 1;
+  min-width: 120px;
+  max-width: 180px;
+}
+
+.decision-radio {
+  position: absolute;
+  opacity: 0;
+}
+
+.decision-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.5rem 1rem;
+  border: 3px solid #e9ecef;
+  border-radius: 15px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+  background: white;
+  height: 100%;
+}
+
+.decision-go:hover {
+  border-color: #28a745;
+  background: rgba(40, 167, 69, 0.05);
+  transform: translateY(-2px);
+}
+
+.decision-no-go:hover {
+  border-color: #dc3545;
+  background: rgba(220, 53, 69, 0.05);
+  transform: translateY(-2px);
+}
+
+.decision-na:hover {
+  border-color: #6c757d;
+  background: rgba(108, 117, 125, 0.05);
+  transform: translateY(-2px);
+}
+
+.decision-radio:checked + .decision-go {
+  border-color: #28a745;
+  background: rgba(40, 167, 69, 0.1);
+  box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.2);
+  transform: scale(1.05);
+}
+
+.decision-radio:checked + .decision-no-go {
+  border-color: #dc3545;
+  background: rgba(220, 53, 69, 0.1);
+  box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.2);
+  transform: scale(1.05);
+}
+
+.decision-radio:checked + .decision-na {
+  border-color: #6c757d;
+  background: rgba(108, 117, 125, 0.1);
+  box-shadow: 0 0 0 3px rgba(108, 117, 125, 0.2);
+  transform: scale(1.05);
+}
+
+.decision-icon {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.decision-text-large {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+
+.decision-subtext {
+  font-size: 0.9rem;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+/* Styles pour les conséquences */
+.consequences-section {
+  margin-top: 1.5rem;
+  padding: 1.5rem;
+  background: rgba(220, 53, 69, 0.05);
+  border-radius: 12px;
+  border: 2px solid rgba(220, 53, 69, 0.2);
+  animation: fadeIn 0.5s ease-in;
+}
+
+.consequences-title {
+  color: #dc3545;
+  text-align: center;
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.consequences-options {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.consequence-option {
+  position: relative;
+}
+
+.consequence-radio {
+  position: absolute;
+  opacity: 0;
+}
+
+.consequence-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem;
+  border: 2px solid #dee2e6;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: white;
+  min-width: 120px;
+  justify-content: center;
+}
+
+.consequence-label:hover {
+  border-color: #dc3545;
+  background: rgba(220, 53, 69, 0.05);
+}
+
+.consequence-radio:checked + .consequence-label {
+  border-color: #dc3545;
+  background: rgba(220, 53, 69, 0.1);
+  box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.2);
+}
+
+.consequence-icon {
+  font-size: 1.2rem;
+}
+
+.consequence-text {
+  font-weight: 600;
+  color: #495057;
+}
+
+/* Styles pour N/A */
+.na-info {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: rgba(108, 117, 125, 0.1);
+  border-radius: 8px;
+  text-align: center;
+}
+
+.na-text {
+  color: #6c757d;
+  font-style: italic;
+  margin: 0;
+  font-weight: 500;
+}
+
+/* Animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .decision-options {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .decision-option {
+    max-width: 100%;
+    width: 100%;
+  }
+  
+  .consequences-options {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .consequence-option {
+    width: 100%;
+  }
+  
+  .consequence-label {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Styles pour le modal d'impression */
+.print-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.print-modal {
+  background: white;
+  width: 90%;
+  max-width: 800px;
+  max-height: 90vh;
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.print-modal-header {
+  padding: 20px;
+  background: #3498db;
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.print-modal-content {
+  padding: 20px;
+  overflow-y: auto;
+  flex-grow: 1;
+}
+
+.checklist-print-version {
+  font-family: Arial, sans-serif;
+  line-height: 1.4;
+}
+
+.print-header {
+  text-align: center;
+  margin-bottom: 30px;
+  border-bottom: 2px solid #3498db;
+  padding-bottom: 20px;
+}
+
+.print-section {
+  margin-bottom: 25px;
+  border: 1px solid #ddd;
+  padding: 15px;
+  border-radius: 5px;
+}
+
+.print-subtitle {
+  font-weight: bold;
+  color: #666;
+  margin-bottom: 15px;
+}
+
+.print-item {
+  margin: 10px 0;
+  padding: 8px;
+  border-bottom: 1px solid #eee;
+}
+
+.print-question {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.print-text {
+  flex: 1;
+}
+
+.print-answer {
+  font-weight: bold;
+  color: #2c3e50;
+  margin-left: 15px;
+}
+
+.print-decision {
+  background: #e8f4fd;
+  padding: 20px;
+  text-align: center;
+  margin: 30px 0;
+  border-radius: 5px;
+}
+
+.print-signatures {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 50px;
+}
+
+.signature-box {
+  width: 30%;
+  text-align: center;
+}
+
+.signature-line {
+  border-top: 1px solid #000;
+  margin-bottom: 5px;
+  height: 20px;
+}
+
+.patient-info {
+  margin-top: 30px;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 5px;
+}
+
+.print-actions {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #ddd;
+}
+
+.btn-print {
+  background: #2c3e50;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.btn-print-now {
+  background: #27ae60;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.btn-print-cancel {
+  background: #95a5a6;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+/* Styles d'impression */
+@media print {
+  .print-modal-overlay {
+    position: static;
+    background: none;
+  }
+  
+  .print-modal {
+    width: 100%;
+    max-width: none;
+    box-shadow: none;
+  }
+  
+  .print-modal-header,
+  .print-actions {
+    display: none;
+  }
+}
