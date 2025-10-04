@@ -74,16 +74,18 @@
 
     <!-- Mode vue d'ensemble des étapes -->
     <div *ngIf="mode === 'etape'" class="etapes-overview">
+      <!-- Boucle des étapes normales (sans la décision finale) -->
       <div *ngFor="let etape of etapes; let i = index" 
            class="etape-card" 
            [class.complete]="etapesValidees[i]"
-           [class.current]="i === currentEtapeIndex">
+           [class.current]="i === currentEtapeIndex"
+           [class.locked]="!isEtapeAccessible(i)">
         
         <div class="etape-header">
           <div class="etape-indicator">
             <span class="etape-number">{{ i + 1 }}</span>
             <div class="etape-status" [class.validated]="etapesValidees[i]">
-              {{ etapesValidees[i] ? '✓' : '○' }}
+              {{ etapesValidees[i] ? '✓' : (isEtapeAccessible(i) ? '○' : '🔒') }}
             </div>
           </div>
           
@@ -104,7 +106,10 @@
         <div class="etape-actions">
           <button *ngIf="!etapesValidees[i]" 
                   class="btn-start"
-                  (click)="commencerEtape(i)">
+                  [class.disabled]="!isEtapeAccessible(i)"
+                  [title]="getEtapeTooltip(i)"
+                  (click)="commencerEtape(i)"
+                  [disabled]="!isEtapeAccessible(i)">
             {{ i === currentEtapeIndex ? 'Continuer' : 'Commencer' }}
           </button>
           
@@ -120,9 +125,15 @@
             Rouvrir
           </button>
         </div>
+
+        <!-- Message d'étape verrouillée -->
+        <div *ngIf="!isEtapeAccessible(i) && !etapesValidees[i]" class="locked-message">
+          <span class="lock-icon">🔒</span>
+          <span class="locked-text">Validez les étapes précédentes pour déverrouiller</span>
+        </div>
       </div>
 
-      <!-- DÉCISION FINALE - Section séparée -->
+      <!-- DÉCISION FINALE - Section séparée (APRÈS les étapes normales) -->
       <div *ngIf="toutesEtapesValidees()" class="decision-finale-section">
         <div class="decision-card">
           <h3 class="decision-title">🎯 DÉCISION FINALE</h3>
@@ -176,6 +187,20 @@
             <p [class]="getDecisionStatusClass()">
               {{ getDecisionStatusText() }}
             </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Message si la décision finale n'est pas encore accessible -->
+      <div *ngIf="!toutesEtapesValidees()" class="decision-locked-section">
+        <div class="decision-card locked">
+          <h3 class="decision-title">🎯 DÉCISION FINALE</h3>
+          <div class="locked-decision-message">
+            <span class="lock-icon">🔒</span>
+            <p>Validez toutes les étapes précédentes pour accéder à la décision finale</p>
+            <div class="etapes-restantes">
+              Étapes restantes : {{ etapes.length - etapesCompletees }}/{{ etapes.length }}
+            </div>
           </div>
         </div>
       </div>
@@ -339,16 +364,16 @@
             <div class="print-item">
               <p><strong>L'identité du patient est correcte</strong></p>
               <div class="checkbox-print">
-                <span [class.checked]="isQuestionCheckedForPrint('l_identite_du_patient_est_correcte', 'Oui')">☐ Oui</span>
-                <span [class.checked]="isQuestionCheckedForPrint('l_identite_du_patient_est_correcte', 'Non')">☐ Non</span>
+                <span [class.checked]="isQuestionCheckedForPrint('identite_patient', 'Oui')">☐ Oui</span>
+                <span [class.checked]="isQuestionCheckedForPrint('identite_patient', 'Non')">☐ Non</span>
               </div>
             </div>
 
             <div class="print-item">
               <p><strong>L'autorisation d'opérer est signée par les parents ou le représentant légal</strong></p>
               <div class="checkbox-print">
-                <span [class.checked]="isQuestionCheckedForPrint('l_autorisation_d_operer_est_signee_par_les', 'Oui')">☐ Oui</span>
-                <span [class.checked]="isQuestionCheckedForPrint('l_autorisation_d_operer_est_signee_par_les', 'Non')">☐ Non</span>
+                <span [class.checked]="isQuestionCheckedForPrint('autorisation_operer', 'Oui')">☐ Oui</span>
+                <span [class.checked]="isQuestionCheckedForPrint('autorisation_operer', 'Non')">☐ Non</span>
               </div>
             </div>
 
@@ -357,24 +382,24 @@
               <p class="indented">- idéalement par le patient et, dans tous les cas, par le dossier ou procédure spécifique</p>
               <p class="indented">- la documentation clinique et sans clinique nécessaire est disponible en salle</p>
               <div class="checkbox-print">
-                <span [class.checked]="isQuestionCheckedForPrint('l_intervention_et_le_site_operatoire_son', 'Oui')">☐ Oui</span>
-                <span [class.checked]="isQuestionCheckedForPrint('l_intervention_et_le_site_operatoire_son', 'Non')">☐ Non</span>
+                <span [class.checked]="isQuestionCheckedForPrint('intervention_site', 'Oui')">☐ Oui</span>
+                <span [class.checked]="isQuestionCheckedForPrint('intervention_site', 'Non')">☐ Non</span>
               </div>
             </div>
 
             <div class="print-item">
               <p><strong>Le mode d'installation est connu de l'équipe en salle, cohérent avec le site / l'intervention et non dangereux pour le patient</strong></p>
               <div class="checkbox-print">
-                <span [class.checked]="isQuestionCheckedForPrint('le_mode_d_installation_est_connu_de_l_equ', 'Oui')">☐ Oui</span>
-                <span [class.checked]="isQuestionCheckedForPrint('le_mode_d_installation_est_connu_de_l_equ', 'Non')">☐ Non</span>
+                <span [class.checked]="isQuestionCheckedForPrint('mode_installation', 'Oui')">☐ Oui</span>
+                <span [class.checked]="isQuestionCheckedForPrint('mode_installation', 'Non')">☐ Non</span>
               </div>
             </div>
 
             <div class="print-item">
               <p><strong>La préparation cutanée de l'opéré est documentée dans la fiche de liaison service / bloc opératoire (ou autre procédure en œuvre dans l'établissement)</strong></p>
               <div class="checkbox-print">
-                <span [class.checked]="isQuestionCheckedForPrint('la_preparation_cutanee_de_l_opere_est_do', 'Oui')">☐ Oui</span>
-                <span [class.checked]="isQuestionCheckedForPrint('la_preparation_cutanee_de_l_opere_est_do', 'Non')">☐ Non</span>
+                <span [class.checked]="isQuestionCheckedForPrint('preparation_cutanee', 'Oui')">☐ Oui</span>
+                <span [class.checked]="isQuestionCheckedForPrint('preparation_cutanee', 'Non')">☐ Non</span>
               </div>
             </div>
 
@@ -384,8 +409,8 @@
               <p class="indented">- pour la partie anesthésique</p>
               <p class="indented">- Actes aux piles en charge anesthésique</p>
               <div class="checkbox-print">
-                <span [class.checked]="isQuestionCheckedForPrint('l_equipement__le_materiel_necessaires_po', 'Oui')">☐ Oui</span>
-                <span [class.checked]="isQuestionCheckedForPrint('l_equipement__le_materiel_necessaires_po', 'Non')">☐ Non</span>
+                <span [class.checked]="isQuestionCheckedForPrint('equipement_materiel', 'Oui')">☐ Oui</span>
+                <span [class.checked]="isQuestionCheckedForPrint('equipement_materiel', 'Non')">☐ Non</span>
               </div>
             </div>
 
@@ -412,8 +437,8 @@
               <p class="indented">- installation correcte confirmée</p>
               <p class="indented">- documents nécessaires disponibles (notamment imaginé)</p>
               <div class="checkbox-print">
-                <span [class.checked]="isQuestionCheckedForPrint('verification_ultime_cuisee_au_sein_de_l_e', 'Oui')">☐ Oui</span>
-                <span [class.checked]="isQuestionCheckedForPrint('verification_ultime_cuisee_au_sein_de_l_e', 'Non')">☐ Non</span>
+                <span [class.checked]="isQuestionCheckedForPrint('verification_ultime', 'Oui')">☐ Oui</span>
+                <span [class.checked]="isQuestionCheckedForPrint('verification_ultime', 'Non')">☐ Non</span>
               </div>
             </div>
 
@@ -424,8 +449,8 @@
               <p class="indented">- sur le plan anesthésique</p>
               <p class="indented-small">Actes aux piles en charge anesthésique (tommes potentiels liés au niveau (hypothermie, etc.) ou à des traitements réinvestiment maintenus, etc.)</p>
               <div class="checkbox-print">
-                <span [class.checked]="isQuestionCheckedForPrint('partage_des_informations_essentielles_or', 'Oui')">☐ Oui</span>
-                <span [class.checked]="isQuestionCheckedForPrint('partage_des_informations_essentielles_or', 'Non')">☐ Non</span>
+                <span [class.checked]="isQuestionCheckedForPrint('partage_informations', 'Oui')">☐ Oui</span>
+                <span [class.checked]="isQuestionCheckedForPrint('partage_informations', 'Non')">☐ Non</span>
               </div>
             </div>
 
@@ -452,16 +477,16 @@
               <p class="indented">- oni-lis fait l'objet d'un signalement / déclaration ?</p>
               <p class="indented">- Si aucun événement indésirable n'est survenu pendant l'intervention couler M/A</p>
               <div class="checkbox-print">
-                <span [class.checked]="isQuestionCheckedForPrint('confirmation_orale_par_le_personnel_aupres', 'Oui')">☐ Oui</span>
-                <span [class.checked]="isQuestionCheckedForPrint('confirmation_orale_par_le_personnel_aupres', 'Non')">☐ Non</span>
+                <span [class.checked]="isQuestionCheckedForPrint('confirmation_orale', 'Oui')">☐ Oui</span>
+                <span [class.checked]="isQuestionCheckedForPrint('confirmation_orale', 'Non')">☐ Non</span>
               </div>
             </div>
 
             <div class="print-item">
               <p><strong>Les prescriptions et la surveillance post-opératoires (y compris les seuils d'alerte spécifiques) sont faites complètement par l'équipe chirurgicale et anesthésique et adaptées à l'âge, au poids et à la taille du patient</strong></p>
               <div class="checkbox-print">
-                <span [class.checked]="isQuestionCheckedForPrint('les_prescriptions_et_la_surveillance_post', 'Oui')">☐ Oui</span>
-                <span [class.checked]="isQuestionCheckedForPrint('les_prescriptions_et_la_surveillance_post', 'Non')">☐ Non</span>
+                <span [class.checked]="isQuestionCheckedForPrint('prescriptions_surveillance', 'Oui')">☐ Oui</span>
+                <span [class.checked]="isQuestionCheckedForPrint('prescriptions_surveillance', 'Non')">☐ Non</span>
               </div>
             </div>
           </div>

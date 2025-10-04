@@ -45,8 +45,8 @@ export class ChecklistFormulaireComponent implements OnInit {
 
   // Impression
   showPrintModal = false;
-  patientNom = 'Nom du Patient'; // À adapter avec vos données
-  interventionType = 'Intervention Chirurgicale'; // À adapter avec vos données
+  patientNom = 'Nom du Patient';
+  interventionType = 'Intervention Chirurgicale';
   currentDate = new Date();
 
   // Mapping des questions pour l'impression - CORRIGÉ
@@ -135,29 +135,32 @@ export class ChecklistFormulaireComponent implements OnInit {
   }
 
   // Classes CSS pour les boutons de décision
-  getDecisionBtnClasses(value: string): string {
-    if (this.decisionFinale === value) {
-      return value === 'Oui' ? 'btn-success' : 'btn-danger';
-    }
-    return 'btn-outline-primary';
+  getDecisionBtnClasses(value: string): any {
+    return {
+      'selected': this.decisionFinale === value,
+      'btn-success': value === 'Oui' && this.decisionFinale === value,
+      'btn-danger': value === 'Non' && this.decisionFinale === value,
+      'btn-outline-primary': this.decisionFinale !== value
+    };
   }
 
   // Classes CSS pour les boutons de conséquence
-  getConsequenceBtnClasses(value: string): string {
-    if (this.consequence === value) {
-      return 'btn-warning';
-    }
-    return 'btn-outline-secondary';
+  getConsequenceBtnClasses(value: string): any {
+    return {
+      'selected': this.consequence === value,
+      'btn-warning': this.consequence === value,
+      'btn-outline-secondary': this.consequence !== value
+    };
   }
 
   // Validation de la décision
   isDecisionComplete(): boolean {
     if (this.decisionFinale === 'Oui') {
-      return true; // "Oui" ne nécessite pas de conséquence
+      return true;
     } else if (this.decisionFinale === 'Non') {
-      return !!this.consequence; // "Non" nécessite une conséquence
+      return !!this.consequence;
     }
-    return false; // Aucune décision sélectionnée
+    return false;
   }
 
   // Texte de statut
@@ -197,7 +200,12 @@ export class ChecklistFormulaireComponent implements OnInit {
     this.checkListService.getCheckList(this.checklistId).subscribe({
       next: (checklist: CheckListDto) => {
         this.checklistNom = checklist.libelle;
-        this.etapes = checklist.etapes;
+        
+        // FILTRER les étapes pour SUPPRIMER l'étape "DÉCISION FINALE"
+        this.etapes = checklist.etapes.filter(etape => 
+          !etape.nom.toLowerCase().includes('décision') && 
+          !etape.nom.toLowerCase().includes('decision')
+        );
 
         // Initialiser le mapping des questions POUR L'IMPRESSION
         this.initializeQuestionMappingForPrint();
@@ -222,6 +230,9 @@ export class ChecklistFormulaireComponent implements OnInit {
         // Charger les étapes validées après avoir initialisé les indices
         this.loadEtapesValidees();
         this.loadPartialProgress();
+
+        // DEBUG: Vérifier le mapping
+        this.debugQuestionMapping();
       },
       error: (_err: any) => {
         this.loading = false;
@@ -230,53 +241,99 @@ export class ChecklistFormulaireComponent implements OnInit {
     });
   }
 
-  // === NOUVELLE MÉTHODE POUR INITIALISER LE MAPPING POUR L'IMPRESSION ===
+  // === MAPPING AMÉLIORÉ POUR L'IMPRESSION ===
   private initializeQuestionMappingForPrint(): void {
     this.questionMapping = {};
     
-    // Mapping fixe pour la checklist bloc opératoire
+    console.log('🔍 Initialisation du mapping pour impression...');
+    console.log('📋 Étapes chargées:', this.etapes);
+
+    // Mapping COMPLET basé sur le PDF
     const printQuestions = [
       // Avant induction anesthésique
-      { key: 'identite_patient', text: "L'identité du patient est correcte" },
-      { key: 'autorisation_operer', text: "L'autorisation d'opérer est signée par les parents ou le représentant légal" },
-      { key: 'intervention_site', text: "L'intervention et le site opératoire sont confirmés" },
-      { key: 'mode_installation', text: "Le mode d'installation est connu de l'équipe en salle" },
-      { key: 'preparation_cutanee', text: "La préparation cutanée de l'opéré est documentée" },
-      { key: 'equipement_materiel', text: "L'équipement / le matériel nécessaires pour l'intervention sont vérifiés" },
+      { key: 'identite_patient', keywords: ["identité", "patient", "correcte"] },
+      { key: 'autorisation_operer', keywords: ["autorisation", "opérer", "signée", "parents"] },
+      { key: 'intervention_site', keywords: ["intervention", "site", "opératoire", "confirmés"] },
+      { key: 'mode_installation', keywords: ["mode", "installation", "équipe", "salle"] },
+      { key: 'preparation_cutanee', keywords: ["préparation", "cutanée", "documentée"] },
+      { key: 'equipement_materiel', keywords: ["équipement", "matériel", "vérifiés", "poids"] },
       
       // Avant intervention chirurgicale
-      { key: 'verification_ultime', text: "Vérification « ultime » cuisée au sein de l'équipe" },
-      { key: 'partage_informations', text: "Partage des informations essentielles oralement au sein de l'équipe" },
+      { key: 'verification_ultime', keywords: ["vérification", "ultime", "équipe", "chirurgiens"] },
+      { key: 'partage_informations', keywords: ["partage", "informations", "essentielles", "oralement"] },
       
       // Après intervention
-      { key: 'confirmation_orale', text: "Confirmation orale par le personnel auprès de l'équipe" },
-      { key: 'prescriptions_surveillance', text: "Les prescriptions et la surveillance post-opératoires" }
+      { key: 'confirmation_orale', keywords: ["confirmation", "orale", "personnel", "équipe"] },
+      { key: 'prescriptions_surveillance', keywords: ["prescriptions", "surveillance", "post-opératoires"] }
     ];
 
-    // Associer chaque question d'impression à une question réelle de la checklist
+    // Associer chaque question d'impression à une question réelle
     printQuestions.forEach(printQuestion => {
-      const realQuestion = this.findQuestionByText(printQuestion.text);
+      const realQuestion = this.findQuestionByKeywords(printQuestion.keywords);
       if (realQuestion) {
         this.questionMapping[printQuestion.key] = realQuestion.id;
+        console.log(`✅ Mapping réussi: ${printQuestion.key} -> ID: ${realQuestion.id}`);
       } else {
-        console.warn(`⚠️ Question non trouvée: ${printQuestion.text}`);
+        console.warn(`❌ Question non trouvée pour: ${printQuestion.keywords.join(', ')}`);
       }
     });
 
-    console.log('🗺️ Mapping des questions pour impression:', this.questionMapping);
+    console.log('🗺️ Mapping final:', this.questionMapping);
   }
 
-  // Trouver une question par son texte (approximatif)
-  private findQuestionByText(searchText: string): QuestionDto | null {
+  // Recherche améliorée par mots-clés
+  private findQuestionByKeywords(keywords: string[]): QuestionDto | null {
+    let bestMatch: { question: QuestionDto, score: number } | null = null;
+
     for (const etape of this.etapes) {
       for (const question of etape.questions) {
-        // Recherche approximative dans le texte de la question
-        if (question.texte.toLowerCase().includes(searchText.toLowerCase().substring(0, 30))) {
+        const questionText = question.texte.toLowerCase();
+        let score = 0;
+
+        // Calculer le score de correspondance
+        keywords.forEach(keyword => {
+          if (questionText.includes(keyword.toLowerCase())) {
+            score++;
+          }
+        });
+
+        // Si on a une correspondance parfaite, retourner immédiatement
+        if (score === keywords.length) {
           return question;
+        }
+
+        // Garder la meilleure correspondance
+        if (score > 0 && (!bestMatch || score > bestMatch.score)) {
+          bestMatch = { question, score };
         }
       }
     }
-    return null;
+
+    return bestMatch ? bestMatch.question : null;
+  }
+
+  // Méthode de debug pour vérifier le mapping
+  private debugQuestionMapping(): void {
+    console.log('🐛 DEBUG - Vérification du mapping:');
+    
+    const testMappings = [
+      { key: 'identite_patient', expected: "identité" },
+      { key: 'autorisation_operer', expected: "autorisation" },
+      { key: 'intervention_site', expected: "intervention" },
+      { key: 'mode_installation', expected: "installation" },
+      { key: 'preparation_cutanee', expected: "préparation" },
+      { key: 'equipement_materiel', expected: "équipement" },
+      { key: 'verification_ultime', expected: "vérification" },
+      { key: 'partage_informations', expected: "partage" },
+      { key: 'confirmation_orale', expected: "confirmation" },
+      { key: 'prescriptions_surveillance', expected: "prescriptions" }
+    ];
+
+    testMappings.forEach(test => {
+      const questionId = this.questionMapping[test.key];
+      const response = questionId ? this.getQuestionResponse(questionId) : 'NON TROUVÉ';
+      console.log(`🔍 ${test.key}: ID=${questionId}, Réponse=${response}`);
+    });
   }
 
   // === GETTERS ===
@@ -304,6 +361,42 @@ export class ChecklistFormulaireComponent implements OnInit {
   }
   get etapesCompletees(): number {
     return this.etapesValidees.filter(v => v).length;
+  }
+
+  // === NOUVELLES MÉTHODES POUR LA VALIDATION SÉQUENTIELLE ===
+  
+  // Vérifier si une étape est accessible
+  isEtapeAccessible(etapeIndex: number): boolean {
+    if (etapeIndex === 0) return true; // Première étape toujours accessible
+    
+    // Vérifier que toutes les étapes précédentes sont validées
+    for (let i = 0; i < etapeIndex; i++) {
+      if (!this.etapesValidees[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  // Vérifier si le bouton "Commencer" doit être désactivé
+  isStartButtonDisabled(etapeIndex: number): boolean {
+    return !this.isEtapeAccessible(etapeIndex);
+  }
+
+  // Obtenir le texte du tooltip pour les étapes non accessibles
+  getEtapeTooltip(etapeIndex: number): string {
+    if (this.isEtapeAccessible(etapeIndex)) {
+      return '';
+    }
+    
+    const etapesManquantes = [];
+    for (let i = 0; i < etapeIndex; i++) {
+      if (!this.etapesValidees[i]) {
+        etapesManquantes.push(i + 1);
+      }
+    }
+    
+    return `Validez d'abord les étapes : ${etapesManquantes.join(', ')}`;
   }
 
   // === PROGRESSION ===
@@ -345,10 +438,8 @@ export class ChecklistFormulaireComponent implements OnInit {
       this.savePartialProgress();
 
       if (this.currentEtapeIndex === this.etapes.length - 1) {
-        // Toutes les étapes sont validées, on reste en mode étape pour la décision finale
         this.mode = 'etape';
       } else {
-        // passer à l'étape suivante
         this.currentEtapeIndex++;
         this.currentQuestionIndex = 0;
         this.savePartialProgress();
@@ -363,6 +454,10 @@ export class ChecklistFormulaireComponent implements OnInit {
 
   // === NAVIGATION ===
   commencerEtape(etapeIndex: number) {
+    if (!this.isEtapeAccessible(etapeIndex)) {
+      return; // Ne pas permettre l'accès si l'étape n'est pas accessible
+    }
+    
     this.currentEtapeIndex = etapeIndex;
     this.mode = 'question';
     this.goToFirstUnansweredQuestion();
@@ -627,8 +722,6 @@ export class ChecklistFormulaireComponent implements OnInit {
     }
     
     const response = this.getQuestionResponse(questionId);
-    console.log(`🔍 Vérification impression - Clé: ${questionKey}, ID: ${questionId}, Réponse: ${response}, Attendue: ${value}`);
-    
     return response === value;
   }
 
