@@ -1622,3 +1622,1058 @@ button:hover { transform: translateY(-4px) scale(1.05); box-shadow: 0 8px 25px r
 .btn-start {
   position: relative;
 }
+/* Styles pour les barres de progression */
+.progress-section {
+  margin: 20px 0;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.progress-info {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 0.9em;
+}
+
+.progress-label {
+  font-weight: 600;
+  color: #495057;
+}
+
+.progress-percent {
+  font-weight: bold;
+  color: #007bff;
+}
+
+.progress-bar {
+  height: 12px;
+  background: #e9ecef;
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+}
+
+.progress-bar.small {
+  height: 8px;
+}
+
+.progress-bar.mini {
+  height: 6px;
+  flex: 1;
+  margin-right: 10px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #007bff, #0056b3);
+  border-radius: 6px;
+  transition: width 0.3s ease;
+}
+
+.progress-info-small {
+  font-size: 0.8em;
+  color: #6c757d;
+  margin-bottom: 4px;
+}
+
+.etape-progress-mini {
+  display: flex;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.progress-text-mini {
+  font-size: 0.8em;
+  color: #6c757d;
+  min-width: 40px;
+}
+
+/* Styles pour les cases à cocher style PDF */
+.checkbox-options {
+  display: flex;
+  gap: 20px;
+  margin: 15px 0;
+}
+
+.checkbox-item {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 10px 15px;
+  border: 2px solid #dee2e6;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+  background: white;
+}
+
+.checkbox-item:hover {
+  border-color: #adb5bd;
+}
+
+.checkbox-item.selected {
+  border-width: 3px;
+}
+
+.checkbox-custom {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #6c757d;
+  border-radius: 3px;
+  margin-right: 10px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.checkbox-item.selected .checkbox-custom {
+  border-width: 2px;
+}
+
+.checkbox-item.selected .checkbox-custom::after {
+  content: "✓";
+  font-weight: bold;
+  font-size: 14px;
+}
+
+/* Style pour Oui (vert) */
+.checkbox-yes.selected {
+  border-color: #28a745;
+  background-color: #f8fff9;
+}
+
+.checkbox-yes.selected .checkbox-custom {
+  border-color: #28a745;
+  background-color: #28a745;
+  color: white;
+}
+
+/* Style pour Non (rouge) */
+.checkbox-no.selected {
+  border-color: #dc3545;
+  background-color: #fff8f8;
+}
+
+.checkbox-no.selected .checkbox-custom {
+  border-color: #dc3545;
+  background-color: #dc3545;
+  color: white;
+}
+
+/* Style pour N/A (gris) */
+.checkbox-na.selected {
+  border-color: #6c757d;
+  background-color: #f8f9fa;
+}
+
+.checkbox-na.selected .checkbox-custom {
+  border-color: #6c757d;
+  background-color: #6c757d;
+  color: white;
+}
+
+.checkbox-label {
+  font-weight: 500;
+  color: #495057;
+}
+
+.checkbox-item.selected .checkbox-label {
+  font-weight: 600;
+}
+
+/* Styles pour les conséquences */
+.consequence-checkbox {
+  flex-direction: column;
+  text-align: center;
+  padding: 15px;
+}
+
+.consequence-checkbox .checkbox-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+.consequence-icon {
+  font-size: 1.2em;
+}
+
+/* Styles pour les étapes verrouillées (inchangés) */
+.etape-card.locked {
+  opacity: 0.6;
+  background-color: #f8f9fa;
+  border-color: #dee2e6;
+}
+
+.etape-card.locked .etape-title {
+  color: #6c757d;
+}
+
+.etape-card.locked .etape-stats {
+  color: #6c757d;
+}
+
+.etape-card.locked .progress-bar {
+  background-color: #e9ecef;
+}
+
+.etape-card.locked .progress-fill {
+  background-color: #6c757d;
+}
+
+.btn-start.disabled {
+  background-color: #6c757d;
+  border-color: #6c757d;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.locked-message {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 8px 12px;
+  background-color: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 4px;
+  font-size: 0.9em;
+  color: #856404;
+}
+
+.lock-icon {
+  font-size: 1.1em;
+}
+
+.locked-text {
+  flex: 1;
+}
+
+/* Styles pour la décision finale verrouillée */
+.decision-locked-section .decision-card.locked {
+  background: #f8f9fa;
+  border: 2px dashed #dee2e6;
+  opacity: 0.7;
+}
+
+.locked-decision-message {
+  text-align: center;
+  padding: 20px;
+}
+
+.locked-decision-message .lock-icon {
+  font-size: 2em;
+  margin-bottom: 10px;
+  display: block;
+}
+
+.locked-decision-message p {
+  margin-bottom: 10px;
+  color: #6c757d;
+}
+
+.etapes-restantes {
+  background: #e9ecef;
+  padding: 5px 10px;
+  border-radius: 15px;
+  font-size: 0.9em;
+  color: #495057;
+  display: inline-block;
+}
+/* Formulaire principal */
+form {
+  max-width: 1200px;
+  margin: 3rem auto;
+  padding: 4rem;
+  background: linear-gradient(145deg, #ffffff 0%, #f0f7ff 50%, #e6f2ff 100%);
+  border-radius: 35px;
+  box-shadow: 0 25px 60px rgba(31, 60, 136, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  position: relative;
+  overflow: hidden;
+}
+
+form::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 6px;
+  background: linear-gradient(90deg, #1f3c88, #4a90e2, #1f3c88);
+  background-size: 200% 100%;
+  animation: shimmer 3s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%, 100% { background-position: -200% 0; }
+  50% { background-position: 200% 0; }
+}
+
+/* Titres */
+h2 {
+  text-align: center;
+  color: #1f3c88;
+  margin-bottom: 3rem;
+  font-weight: 900;
+  font-size: 3rem;
+  text-shadow: 0 4px 8px rgba(31, 60, 136, 0.2);
+  background: linear-gradient(135deg, #1f3c88 0%, #4a90e2 50%, #1f3c88 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-size: 200% auto;
+  animation: textShine 4s ease-in-out infinite;
+  position: relative;
+  padding-bottom: 1rem;
+}
+
+h2::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 50%;
+  transform: translateX(-50%);
+  width: 100px;
+  height: 4px;
+  background: linear-gradient(90deg, transparent, #1f3c88, transparent);
+  border-radius: 2px;
+}
+
+@keyframes textShine {
+  0%, 100% { background-position: 0% center; }
+  50% { background-position: 200% center; }
+}
+
+/* Alertes */
+.alert {
+  border-radius: 20px;
+  padding: 1.5rem 2rem;
+  text-align: center;
+  font-weight: 700;
+  font-size: 1.3rem;
+  background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+  color: #155724;
+  border: 2px solid #c3e6cb;
+  box-shadow: 0 8px 25px rgba(76, 175, 80, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  margin-bottom: 2.5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.alert::before {
+  content: '✓';
+  position: absolute;
+  left: 1rem; top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.5rem;
+  color: #28a745;
+}
+
+/* Labels */
+.mb-3 label, .mb-2 label {
+  font-weight: 800;
+  color: #2c3e50;
+  font-size: 1.3rem;
+  margin-bottom: 0.8rem;
+  display: block;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+  position: relative;
+  padding-left: 1.5rem;
+}
+
+.mb-3 label::before, .mb-2 label::before {
+  content: '▶';
+  position: absolute;
+  left: 0;
+  color: #1f3c88;
+  font-size: 0.8rem;
+  top: 0.3rem;
+}
+
+/* Inputs et selects */
+input.form-control, select.form-select {
+  border-radius: 16px;
+  border: 2px solid #e1e8f0;
+  padding: 1.2rem 1.5rem;
+  font-size: 1.2rem;
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  background: linear-gradient(135deg, #ffffff 0%, #fafcff 100%);
+  box-shadow: inset 0 2px 6px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.05);
+}
+
+input.form-control:focus, select.form-select:focus {
+  border-color: #1f3c88;
+  box-shadow: 0 0 0 4px rgba(31, 60, 136, 0.15), inset 0 2px 6px rgba(0,0,0,0.08), 0 4px 12px rgba(31, 60, 136, 0.2);
+  outline: none;
+  transform: translateY(-3px) scale(1.02);
+  background: linear-gradient(135deg, #ffffff 0%, #f0f5ff 100%);
+}
+
+/* Étapes */
+.etape-section {
+  position: relative;
+  border: 2px solid #e9ecef;
+  border-radius: 15px;
+  padding: 0;
+  margin-bottom: 3rem;
+  background: white;
+}
+
+.etape-header {
+  background: linear-gradient(135deg, #1f3c88 0%, #4a90e2 100%);
+  color: white;
+  border-radius: 12px 12px 0 0;
+  padding: 1.5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.etape-header::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent);
+}
+
+.etape-badge {
+  position: absolute;
+  top: -15px; left: 50%;
+  transform: translateX(-50%);
+  background: #ff6b6b;
+  color: white;
+  width: 35px; height: 35px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: bold; font-size: 1rem;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.etape-title {
+  font-weight: 700;
+  font-size: 1.6rem;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.questions-container {
+  background: linear-gradient(145deg, #f8fbff 0%, #ffffff 100%);
+  border-radius: 15px;
+  padding: 2.5rem;
+  border: 1px solid rgba(31, 60, 136, 0.1);
+}
+
+/* Cartes de questions */
+.question-card {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
+  border: 2px solid #e9ecef;
+  border-radius: 20px;
+  box-shadow: 0 8px 30px rgba(31, 60, 136, 0.15);
+  transition: all 0.3s ease;
+  min-height: 120px;
+  display: flex; flex-direction: column; justify-content: center;
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+.question-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 30px rgba(31, 60, 136, 0.2);
+  border-left-color: #1f3c88;
+}
+
+.question-title {
+  color: #2c3e50;
+  font-weight: 700;
+  font-size: 1.3rem;
+  line-height: 1.5;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+/* Boutons Oui/Non avec couleurs spécifiques */
+.boolean-options { margin: 1rem 0; }
+.boolean-label {
+  font-size: 1.2rem; font-weight: 600;
+  padding: 12px 24px;
+  border: 2px solid #e9ecef;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 100px; text-align: center; display: block;
+}
+.form-check-input:checked + .boolean-label { 
+  color: white; box-shadow: 0 4px 12px rgba(31, 60, 136, 0.3);
+}
+.form-check-input[value="Oui"]:checked + .boolean-label { 
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%); 
+  border-color:#28a745;
+}
+.form-check-input[value="Non"]:checked + .boolean-label { 
+  background: linear-gradient(135deg, #dc3545 0%, #e83e8c 100%); 
+  border-color:#dc3545;
+}
+.form-check-input[value="N/A"]:checked + .boolean-label { 
+  background: linear-gradient(135deg, #fd7e14 0%, #ffc107 100%); 
+  border-color:#fd7e14;
+}
+
+/* Boutons génériques */
+button {
+  border-radius: 16px; font-weight: 700; font-size: 1.1rem;
+  padding: 1rem 2rem; transition: all 0.3s ease;
+  border: none; position: relative; overflow: hidden; text-transform: uppercase; letter-spacing: 0.5px;
+}
+button::before {
+  content: ''; position: absolute; top:0; left:-100%; width:100%; height:100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent); transition: left 0.6s;
+}
+button:hover::before { left: 100%; }
+button:hover { transform: translateY(-4px) scale(1.05); box-shadow: 0 8px 25px rgba(0,0,0,0.25); }
+
+/* Animations */
+@keyframes fadeIn { from { opacity:0; transform: translateY(20px);} to{opacity:1; transform:translateY(0);} }
+
+/* Responsive */
+@media (max-width:768px){
+  form { padding:2rem; margin:1.5rem; border-radius:25px; }
+  h2 { font-size:2.2rem; }
+  input.form-control, select.form-select { font-size:1.1rem; padding:1rem; }
+  .etape-header, .questions-container, .question-card { padding:1.5rem !important; }
+  .question-title { font-size:1.1rem; }
+  .boolean-label { font-size:1rem; padding:10px 16px; min-width:80px; }
+  .d-flex.justify-content-center.gap-4 { gap:1rem !important; }
+  .navigation-buttons { flex-direction:column; gap:1rem; text-align:center; }
+}
+
+/* Styles pour les barres de progression */
+.progress-section {
+  margin: 20px 0;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.progress-info {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 0.9em;
+}
+
+.progress-label {
+  font-weight: 600;
+  color: #495057;
+}
+
+.progress-percent {
+  font-weight: bold;
+  color: #007bff;
+}
+
+.progress-bar {
+  height: 12px;
+  background: #e9ecef;
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #007bff, #0056b3);
+  border-radius: 6px;
+  transition: width 0.3s ease;
+}
+
+.progress-info-small {
+  font-size: 0.8em;
+  color: #6c757d;
+  margin-bottom: 4px;
+}
+
+.etape-progress-mini {
+  display: flex;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.progress-text-mini {
+  font-size: 0.8em;
+  color: #6c757d;
+  min-width: 40px;
+}
+
+/* Styles pour les boutons de réponse avec couleurs */
+.answer-options {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  margin: 20px 0;
+  flex-wrap: wrap;
+}
+
+.answer-btn {
+  padding: 12px 24px;
+  border: 2px solid #e9ecef;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 100px;
+  text-align: center;
+}
+
+/* Bouton Oui - Vert */
+.btn-success {
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  color: white;
+  border-color: #28a745;
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
+.btn-outline-success {
+  background: white;
+  color: #28a745;
+  border-color: #28a745;
+}
+
+.btn-outline-success:hover {
+  background: #28a745;
+  color: white;
+}
+
+/* Bouton Non - Rouge */
+.btn-danger {
+  background: linear-gradient(135deg, #dc3545 0%, #e83e8c 100%);
+  color: white;
+  border-color: #dc3545;
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+}
+
+.btn-outline-danger {
+  background: white;
+  color: #dc3545;
+  border-color: #dc3545;
+}
+
+.btn-outline-danger:hover {
+  background: #dc3545;
+  color: white;
+}
+
+/* Bouton N/A - Orange */
+.btn-warning {
+  background: linear-gradient(135deg, #fd7e14 0%, #ffc107 100%);
+  color: white;
+  border-color: #fd7e14;
+  box-shadow: 0 4px 12px rgba(253, 126, 20, 0.3);
+}
+
+.btn-outline-warning {
+  background: white;
+  color: #fd7e14;
+  border-color: #fd7e14;
+}
+
+.btn-outline-warning:hover {
+  background: #fd7e14;
+  color: white;
+}
+
+/* Styles pour les étapes */
+.etape-card {
+  background: white;
+  border-radius: 15px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  border: 3px solid transparent;
+  height: 100%;
+  transition: all 0.3s ease;
+  margin-bottom: 1.5rem;
+}
+
+.etape-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.etape-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.etape-title {
+  font-weight: bold;
+  color: #2c3e50;
+  margin: 0;
+}
+
+.etape-stats {
+  color: #6c757d;
+  font-size: 0.9rem;
+}
+
+.etape-actions {
+  margin-top: 1rem;
+}
+
+.btn-start {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.btn-start.disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+}
+
+/* Mode question */
+.question-mode {
+  background: white;
+  border-radius: 15px;
+  padding: 2rem;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  margin: 1rem 0;
+}
+
+.question-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #e9ecef;
+}
+
+.question-counter {
+  font-weight: 600;
+  color: #495057;
+}
+
+.question-container {
+  text-align: center;
+}
+
+.question-text {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 2rem;
+  line-height: 1.5;
+}
+
+.question-navigation {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e9ecef;
+}
+
+.btn-prev, .btn-next, .btn-validate {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-prev {
+  background: #6c757d;
+  color: white;
+}
+
+.btn-next {
+  background: #007bff;
+  color: white;
+}
+
+.btn-validate {
+  background: #28a745;
+  color: white;
+}
+
+.btn-prev:disabled, .btn-next:disabled {
+  background: #e9ecef;
+  color: #6c757d;
+  cursor: not-allowed;
+}
+
+/* Décision finale */
+.decision-finale-section {
+  margin-top: 2rem;
+  padding: 2rem;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 20px;
+  border: 3px solid #dee2e6;
+}
+
+.decision-card {
+  background: white;
+  padding: 2rem;
+  border-radius: 15px;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+  border-left: 6px solid #1f3c88;
+}
+
+.decision-title {
+  color: #1f3c88;
+  text-align: center;
+  margin-bottom: 1.5rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.decision-text {
+  text-align: center;
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  color: #2c3e50;
+}
+
+.decision-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+/* Actions globales */
+.global-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid #e9ecef;
+  flex-wrap: wrap;
+}
+
+.btn-reset, .btn-preview, .btn-history, .btn-print, .btn-submit {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-reset { background: #ffc107; color: #212529; }
+.btn-preview { background: #17a2b8; color: white; }
+.btn-history { background: #6f42c1; color: white; }
+.btn-print { background: #6c757d; color: white; }
+.btn-submit { background: #28a745; color: white; }
+.btn-submit-disabled { background: #e9ecef; color: #6c757d; cursor: not-allowed; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .answer-options {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .answer-btn {
+    width: 100%;
+    max-width: 200px;
+  }
+  
+  .question-navigation {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .global-actions {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .global-actions button {
+    width: 100%;
+    max-width: 300px;
+  }
+}
+
+
+
+
+
+/* TEST URGENCE - Barres de progression FORCÉES */
+.progress-section {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 10px;
+  margin: 20px 0;
+  border: 2px solid #dee2e6;
+}
+
+.progress-bar {
+  height: 25px !important;
+  background: #e9ecef !important;
+  border-radius: 12px !important;
+  overflow: hidden !important;
+  display: block !important;
+  visibility: visible !important;
+}
+
+.progress-fill {
+  height: 100% !important;
+  background: linear-gradient(90deg, #1f3c88, #4a90e2) !important;
+  border-radius: 10px !important;
+  display: block !important;
+  visibility: visible !important;
+  min-width: 5% !important;
+}
+
+.progress-text {
+  text-align: center;
+  font-weight: bold;
+  color: #1f3c88;
+  margin-top: 10px;
+  font-size: 1.1rem;
+}
+
+/* === URGENCE - BARRES DE PROGRESSION VISIBLES === */
+
+/* Section de progression FORCÉE */
+.progress-section {
+  background: white !important;
+  padding: 20px !important;
+  border-radius: 15px !important;
+  margin: 20px 0 !important;
+  border: 3px solid #dee2e6 !important;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Barre de progression container FORCÉE */
+.progress-bar-container {
+  height: 30px !important;
+  background: #f8f9fa !important;
+  border-radius: 15px !important;
+  border: 2px solid #ced4da !important;
+  overflow: hidden !important;
+  position: relative !important;
+  width: 100% !important;
+  display: block !important;
+  visibility: visible !important;
+  margin: 15px 0 !important;
+}
+
+/* Remplissage de la barre FORCÉ */
+.progress-fill {
+  height: 100% !important;
+  background: linear-gradient(90deg, #1f3c88, #4a90e2) !important;
+  border-radius: 13px !important;
+  transition: width 0.5s ease !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  min-width: 5% !important;
+  display: block !important;
+  visibility: visible !important;
+  box-shadow: 0 2px 10px rgba(31, 60, 136, 0.3) !important;
+}
+
+/* Texte de progression */
+.progress-text {
+  text-align: center !important;
+  font-weight: bold !important;
+  color: #1f3c88 !important;
+  font-size: 1.2rem !important;
+  margin: 10px 0 !important;
+  display: block !important;
+  visibility: visible !important;
+}
+
+/* Informations de progression */
+.progress-info {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  margin-bottom: 10px !important;
+  font-size: 1rem !important;
+  display: block !important;
+  visibility: visible !important;
+}
+
+.progress-label {
+  font-weight: 600 !important;
+  color: #2c3e50 !important;
+}
+
+.progress-percent {
+  font-weight: bold !important;
+  color: #1f3c88 !important;
+  font-size: 1.3rem !important;
+}
+
+/* === STYLES SPÉCIFIQUES POUR LES BARRES DANS LES CARTES === */
+
+/* Barres miniatures dans les étapes */
+.etape-progress .progress-bar-container {
+  height: 15px !important;
+  margin: 8px 0 !important;
+}
+
+.etape-progress .progress-fill {
+  background: linear-gradient(90deg, #28a745, #20c997) !important;
+}
+
+/* Barre globale principale */
+.global-progress .progress-bar-container {
+  height: 25px !important;
+  margin: 10px 0 !important;
+}
+
+.global-progress .progress-fill {
+  background: linear-gradient(90deg, #1f3c88, #4a90e2) !important;
+}
+
+/* === OVERRIDE COMPLET BOOTSTRAP === */
+.progress {
+  display: block !important;
+  visibility: visible !important;
+  height: auto !important;
+  background: transparent !important;
+}
+
+.progress-bar {
+  display: block !important;
+  visibility: visible !important;
+  height: 100% !important;
+  background: transparent !important;
+}
+
+/* === TEST VISUEL DE DÉBUGAGE === */
+.debug-bar {
+  background: #ff4444 !important;
+  height: 30px !important;
+  border: 3px solid #cc0000 !important;
+  display: block !important;
+  visibility: visible !important;
+  margin: 10px 0 !important;
+}
+
+.checkbox-print span.checked[class*="na"] {
+  background-color: #6c757d !important;
+  color: white !important;
+  padding: 2px 5px;
+  border-radius: 3px;
+}

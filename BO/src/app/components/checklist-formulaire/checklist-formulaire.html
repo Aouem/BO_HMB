@@ -64,12 +64,20 @@
       </div>
     </div>
 
-    <!-- Barre de progression -->
+    <!-- Barre de progression GLOBALE -->
     <div class="progress-section">
-      <div class="progress-bar">
+      <div class="progress-info">
+        <span class="progress-label">Progression globale</span>
+        <span class="progress-percent">{{ getGlobalProgress() | number:'1.0-0' }}%</span>
+      </div>
+      
+      <div class="progress-bar-container">
         <div class="progress-fill" [style.width.%]="getGlobalProgress()"></div>
       </div>
-      <span class="progress-text">{{ getGlobalProgress() | number:'1.0-0' }}% complété</span>
+      
+      <div class="progress-text">
+        {{ answeredQuestions }}/{{ totalQuestions }} questions répondues
+      </div>
     </div>
 
     <!-- Mode vue d'ensemble des étapes -->
@@ -96,8 +104,14 @@
             </p>
           </div>
 
+          <!-- Barre de progression par étape -->
           <div class="etape-progress">
-            <div class="progress-bar small">
+            <div class="progress-info">
+              <span class="progress-label">Progression</span>
+              <span class="progress-percent">{{ getEtapeProgress(i) | number:'1.0-0' }}%</span>
+            </div>
+            
+            <div class="progress-bar-container small">
               <div class="progress-fill" [style.width.%]="getEtapeProgress(i)"></div>
             </div>
           </div>
@@ -366,6 +380,7 @@
               <div class="checkbox-print">
                 <span [class.checked]="isQuestionCheckedForPrint('identite_patient', 'Oui')">☐ Oui</span>
                 <span [class.checked]="isQuestionCheckedForPrint('identite_patient', 'Non')">☐ Non</span>
+                <span [class.checked]="isQuestionCheckedForPrint('identite_patient', 'N/A')">☐ N/A</span>
               </div>
             </div>
 
@@ -374,6 +389,7 @@
               <div class="checkbox-print">
                 <span [class.checked]="isQuestionCheckedForPrint('autorisation_operer', 'Oui')">☐ Oui</span>
                 <span [class.checked]="isQuestionCheckedForPrint('autorisation_operer', 'Non')">☐ Non</span>
+                <span [class.checked]="isQuestionCheckedForPrint('autorisation_operer', 'N/A')">☐ N/A</span>
               </div>
             </div>
 
@@ -384,6 +400,7 @@
               <div class="checkbox-print">
                 <span [class.checked]="isQuestionCheckedForPrint('intervention_site', 'Oui')">☐ Oui</span>
                 <span [class.checked]="isQuestionCheckedForPrint('intervention_site', 'Non')">☐ Non</span>
+                <span [class.checked]="isQuestionCheckedForPrint('intervention_site', 'N/A')">☐ N/A</span>
               </div>
             </div>
 
@@ -392,6 +409,7 @@
               <div class="checkbox-print">
                 <span [class.checked]="isQuestionCheckedForPrint('mode_installation', 'Oui')">☐ Oui</span>
                 <span [class.checked]="isQuestionCheckedForPrint('mode_installation', 'Non')">☐ Non</span>
+                <span [class.checked]="isQuestionCheckedForPrint('mode_installation', 'N/A')">☐ N/A</span>
               </div>
             </div>
 
@@ -400,6 +418,7 @@
               <div class="checkbox-print">
                 <span [class.checked]="isQuestionCheckedForPrint('preparation_cutanee', 'Oui')">☐ Oui</span>
                 <span [class.checked]="isQuestionCheckedForPrint('preparation_cutanee', 'Non')">☐ Non</span>
+                <span [class.checked]="isQuestionCheckedForPrint('preparation_cutanee', 'N/A')">☐ N/A</span>
               </div>
             </div>
 
@@ -411,6 +430,7 @@
               <div class="checkbox-print">
                 <span [class.checked]="isQuestionCheckedForPrint('equipement_materiel', 'Oui')">☐ Oui</span>
                 <span [class.checked]="isQuestionCheckedForPrint('equipement_materiel', 'Non')">☐ Non</span>
+                <span [class.checked]="isQuestionCheckedForPrint('equipement_materiel', 'N/A')">☐ N/A</span>
               </div>
             </div>
 
@@ -439,6 +459,7 @@
               <div class="checkbox-print">
                 <span [class.checked]="isQuestionCheckedForPrint('verification_ultime', 'Oui')">☐ Oui</span>
                 <span [class.checked]="isQuestionCheckedForPrint('verification_ultime', 'Non')">☐ Non</span>
+                <span [class.checked]="isQuestionCheckedForPrint('verification_ultime', 'N/A')">☐ N/A</span>
               </div>
             </div>
 
@@ -451,6 +472,7 @@
               <div class="checkbox-print">
                 <span [class.checked]="isQuestionCheckedForPrint('partage_informations', 'Oui')">☐ Oui</span>
                 <span [class.checked]="isQuestionCheckedForPrint('partage_informations', 'Non')">☐ Non</span>
+                <span [class.checked]="isQuestionCheckedForPrint('partage_informations', 'N/A')">☐ N/A</span>
               </div>
             </div>
 
@@ -479,6 +501,7 @@
               <div class="checkbox-print">
                 <span [class.checked]="isQuestionCheckedForPrint('confirmation_orale', 'Oui')">☐ Oui</span>
                 <span [class.checked]="isQuestionCheckedForPrint('confirmation_orale', 'Non')">☐ Non</span>
+                <span [class.checked]="isQuestionCheckedForPrint('confirmation_orale', 'N/A')">☐ N/A</span>
               </div>
             </div>
 
@@ -487,6 +510,7 @@
               <div class="checkbox-print">
                 <span [class.checked]="isQuestionCheckedForPrint('prescriptions_surveillance', 'Oui')">☐ Oui</span>
                 <span [class.checked]="isQuestionCheckedForPrint('prescriptions_surveillance', 'Non')">☐ Non</span>
+                <span [class.checked]="isQuestionCheckedForPrint('prescriptions_surveillance', 'N/A')">☐ N/A</span>
               </div>
             </div>
           </div>

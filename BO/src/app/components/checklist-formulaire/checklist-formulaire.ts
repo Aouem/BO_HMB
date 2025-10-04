@@ -49,7 +49,7 @@ export class ChecklistFormulaireComponent implements OnInit {
   interventionType = 'Intervention Chirurgicale';
   currentDate = new Date();
 
-  // Mapping des questions pour l'impression - CORRIGÉ
+  // Mapping des questions pour l'impression
   questionMapping: { [key: string]: number } = {};
 
   constructor(
@@ -722,6 +722,15 @@ export class ChecklistFormulaireComponent implements OnInit {
     }
     
     const response = this.getQuestionResponse(questionId);
+    
+    // Gestion spéciale pour N/A
+    if (response === 'N/A' && value === 'N/A') {
+      return true;
+    }
+    if (response === 'N/A' && (value === 'Oui' || value === 'Non')) {
+      return false;
+    }
+    
     return response === value;
   }
 
