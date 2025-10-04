@@ -2,8 +2,8 @@
   <!-- Écran de sélection des checklists -->
   <div *ngIf="showChecklistSelection" class="checklist-selection">
     <div class="selection-header">
-      <h1>📋 Sélectionnez une Checklist</h1>
-      <p>Choisissez la checklist que vous souhaitez compléter</p>
+      <h1>🎯 Sélectionnez une Checklist</h1>
+      <p>Choisissez la checklist que vous souhaitez compléter pour votre intervention</p>
     </div>
 
     <!-- Loading -->
@@ -12,16 +12,17 @@
       <p>Chargement des checklists...</p>
     </div>
 
-    <!-- Grille des checklists -->
+    <!-- Grille des checklists améliorée -->
     <div *ngIf="!loading" class="checklists-grid">
-      <div *ngFor="let checklist of allChecklists" 
+      <!-- Checklist Bloc Opératoire -->
+      <div *ngFor="let checklist of allChecklists; let i = index" 
            class="checklist-card"
            (click)="selectChecklist(checklist)">
         
         <div class="card-header">
           <h3 class="card-title">{{ checklist.libelle }}</h3>
           <div class="card-badge">
-            {{ checklist.etapes.length || 0 }} étapes
+            {{ checklist.etapes.length || 0 }} étape{{ checklist.etapes.length > 1 ? 's' : '' }}
           </div>
         </div>
 
@@ -30,13 +31,13 @@
             {{ checklist.description }}
           </p>
           <p class="card-questions">
-            📝 {{ getTotalQuestions(checklist) }} questions
+            {{ getTotalQuestions(checklist) }} question{{ getTotalQuestions(checklist) > 1 ? 's' : '' }}
           </p>
         </div>
 
         <div class="card-footer">
           <button class="btn-select">
-            Sélectionner →
+            Commencer →
           </button>
         </div>
       </div>
@@ -44,6 +45,7 @@
 
     <!-- État vide -->
     <div *ngIf="!loading && allChecklists.length === 0" class="empty-state">
+      <div class="empty-icon">📋</div>
       <h2>Aucune checklist disponible</h2>
       <p>Créez d'abord des checklists dans la section administration.</p>
     </div>
@@ -345,193 +347,303 @@
     </div>
   </div>
 
-  <!-- MODAL D'IMPRESSION POUR LA CHECKLIST BLOC OPÉRATOIRE -->
+  <!-- MODAL D'IMPRESSION ADAPTÉ À CHAQUE CHECKLIST -->
   <div *ngIf="showPrintModal" class="print-modal-overlay">
     <div class="print-modal">
       <div class="print-modal-header">
-        <h2>🖨️ Impression de la Checklist Bloc Opératoire</h2>
+        <h2>🖨️ Impression de la Checklist</h2>
         <button class="btn-close" (click)="closePrintModal()">×</button>
       </div>
       
       <div class="print-modal-content">
         <div id="checklist-print-content" class="checklist-print-version">
           
-          <!-- REPRODUCTION EXACTE DE LA CHECKLIST PDF -->
+          <!-- EN-TÊTE DYNAMIQUE -->
           <div class="print-header">
-            <h1>CHECK-LIST « SÉCURITÉ DU PATIENT AU BLOC OPÉRATOIRE »</h1>
-            <h2>Version 2018</h2>
-            <p class="print-motto">« Vérifier ensemble pour décider »</p>
+            <h1>{{ getPrintTitle() }}</h1>
+            <h2>{{ getPrintVersion() }}</h2>
+            <p class="print-motto">{{ getPrintMotto() }}</p>
             <div class="patient-info-print">
               <p><strong>Patient :</strong> {{ patientNom }} | 
                  <strong>Date :</strong> {{ currentDate | date:'dd/MM/yyyy HH:mm' }} | 
                  <strong>Intervention :</strong> {{ interventionType }}</p>
+              <p><strong>Checklist :</strong> {{ checklistNom }}</p>
             </div>
           </div>
 
           <hr>
 
-          <!-- SECTION AVANT INDUCTION ANESTHÉSIQUE -->
-          <div class="print-section">
-            <h2>AVANT INDUCTION ANESTHÉSIQUE</h2>
-            <p class="print-subtitle"><strong>Temps de pause avant anesthésie</strong></p>
+          <!-- CONTENU DYNAMIQUE BASÉ SUR LE TYPE DE CHECKLIST -->
+          <div [ngSwitch]="getChecklistPrintTemplate()">
             
-            <div class="print-item">
-              <p><strong>L'identité du patient est correcte</strong></p>
-              <div class="checkbox-print">
-                <span [class.checked]="isQuestionCheckedForPrint('identite_patient', 'Oui')">☐ Oui</span>
-                <span [class.checked]="isQuestionCheckedForPrint('identite_patient', 'Non')">☐ Non</span>
-                <span [class.checked]="isQuestionCheckedForPrint('identite_patient', 'N/A')">☐ N/A</span>
+            <!-- TEMPLATE POUR ANESTHÉSIE -->
+            <div *ngSwitchCase="'anesthesie'" class="print-sections-container">
+              
+              <!-- SECTION PRÉ-ANESTHÉSIE -->
+              <div class="print-section">
+                <h2>BILAN PRÉ-ANESTHÉSIQUE</h2>
+                
+                <div class="print-item">
+                  <p><strong>Consultation d'anesthésie réalisée et conforme</strong></p>
+                  <div class="checkbox-print">
+                    <span [class.checked]="isQuestionCheckedForPrint('consultation_anesthesie', 'Oui')">☐ Oui</span>
+                    <span [class.checked]="isQuestionCheckedForPrint('consultation_anesthesie', 'Non')">☐ Non</span>
+                    <span [class.checked]="isQuestionCheckedForPrint('consultation_anesthesie', 'N/A')">☐ N/A</span>
+                  </div>
+                </div>
+
+                <div class="print-item">
+                  <p><strong>Bilan biologique à jour et conforme</strong></p>
+                  <div class="checkbox-print">
+                    <span [class.checked]="isQuestionCheckedForPrint('bilan_biologique', 'Oui')">☐ Oui</span>
+                    <span [class.checked]="isQuestionCheckedForPrint('bilan_biologique', 'Non')">☐ Non</span>
+                    <span [class.checked]="isQuestionCheckedForPrint('bilan_biologique', 'N/A')">☐ N/A</span>
+                  </div>
+                </div>
+
+                <div class="print-item">
+                  <p><strong>Jeûne pré-opératoire respecté</strong></p>
+                  <div class="checkbox-print">
+                    <span [class.checked]="isQuestionCheckedForPrint('jeune_pre_operatoire', 'Oui')">☐ Oui</span>
+                    <span [class.checked]="isQuestionCheckedForPrint('jeune_pre_operatoire', 'Non')">☐ Non</span>
+                    <span [class.checked]="isQuestionCheckedForPrint('jeune_pre_operatoire', 'N/A')">☐ N/A</span>
+                  </div>
+                </div>
+
+                <div class="print-item">
+                  <p><strong>Allergies connues et documentées</strong></p>
+                  <div class="checkbox-print">
+                    <span [class.checked]="isQuestionCheckedForPrint('allergies_documentees', 'Oui')">☐ Oui</span>
+                    <span [class.checked]="isQuestionCheckedForPrint('allergies_documentees', 'Non')">☐ Non</span>
+                    <span [class.checked]="isQuestionCheckedForPrint('allergies_documentees', 'N/A')">☐ N/A</span>
+                  </div>
+                </div>
               </div>
+
+              <!-- SECTION MATÉRIEL ANESTHÉSIE -->
+              <div class="print-section">
+                <h2>VÉRIFICATION DU MATÉRIEL</h2>
+                
+                <div class="print-item">
+                  <p><strong>Matériel d'intubation vérifié et fonctionnel</strong></p>
+                  <div class="checkbox-print">
+                    <span [class.checked]="isQuestionCheckedForPrint('materiel_intubation', 'Oui')">☐ Oui</span>
+                    <span [class.checked]="isQuestionCheckedForPrint('materiel_intubation', 'Non')">☐ Non</span>
+                    <span [class.checked]="isQuestionCheckedForPrint('materiel_intubation', 'N/A')">☐ N/A</span>
+                  </div>
+                </div>
+
+                <div class="print-item">
+                  <p><strong>Médicaments d'anesthésie préparés et étiquetés</strong></p>
+                  <div class="checkbox-print">
+                    <span [class.checked]="isQuestionCheckedForPrint('medicaments_anesthesie', 'Oui')">☐ Oui</span>
+                    <span [class.checked]="isQuestionCheckedForPrint('medicaments_anesthesie', 'Non')">☐ Non</span>
+                    <span [class.checked]="isQuestionCheckedForPrint('medicaments_anesthesie', 'N/A')">☐ N/A</span>
+                  </div>
+                </div>
+
+                <div class="print-item">
+                  <p><strong>Voies veineuses périphériques vérifiées</strong></p>
+                  <div class="checkbox-print">
+                    <span [class.checked]="isQuestionCheckedForPrint('voies_veineuses', 'Oui')">☐ Oui</span>
+                    <span [class.checked]="isQuestionCheckedForPrint('voies_veineuses', 'Non')">☐ Non</span>
+                    <span [class.checked]="isQuestionCheckedForPrint('voies_veineuses', 'N/A')">☐ N/A</span>
+                  </div>
+                </div>
+
+                <div class="print-item">
+                  <p><strong>Monitorage standard connecté et fonctionnel</strong></p>
+                  <div class="checkbox-print">
+                    <span [class.checked]="isQuestionCheckedForPrint('monitorage_standard', 'Oui')">☐ Oui</span>
+                    <span [class.checked]="isQuestionCheckedForPrint('monitorage_standard', 'Non')">☐ Non</span>
+                    <span [class.checked]="isQuestionCheckedForPrint('monitorage_standard', 'N/A')">☐ N/A</span>
+                  </div>
+                </div>
+              </div>
+
             </div>
 
-            <div class="print-item">
-              <p><strong>L'autorisation d'opérer est signée par les parents ou le représentant légal</strong></p>
-              <div class="checkbox-print">
-                <span [class.checked]="isQuestionCheckedForPrint('autorisation_operer', 'Oui')">☐ Oui</span>
-                <span [class.checked]="isQuestionCheckedForPrint('autorisation_operer', 'Non')">☐ Non</span>
-                <span [class.checked]="isQuestionCheckedForPrint('autorisation_operer', 'N/A')">☐ N/A</span>
+            <!-- TEMPLATE POUR BLOC OPÉRATOIRE (EXISTANT) -->
+            <div *ngSwitchCase="'bloc_operatoire'" class="print-sections-container">
+              
+              <!-- SECTION AVANT INDUCTION ANESTHÉSIQUE -->
+              <div class="print-section">
+                <h2>AVANT INDUCTION ANESTHÉSIQUE</h2>
+                <p class="print-subtitle"><strong>Temps de pause avant anesthésie</strong></p>
+                
+                <div class="print-item">
+                  <p><strong>L'identité du patient est correcte</strong></p>
+                  <div class="checkbox-print">
+                    <span [class.checked]="isQuestionCheckedForPrint('identite_patient', 'Oui')">☐ Oui</span>
+                    <span [class.checked]="isQuestionCheckedForPrint('identite_patient', 'Non')">☐ Non</span>
+                    <span [class.checked]="isQuestionCheckedForPrint('identite_patient', 'N/A')">☐ N/A</span>
+                  </div>
+                </div>
+
+                <div class="print-item">
+                  <p><strong>L'autorisation d'opérer est signée par les parents ou le représentant légal</strong></p>
+                  <div class="checkbox-print">
+                    <span [class.checked]="isQuestionCheckedForPrint('autorisation_operer', 'Oui')">☐ Oui</span>
+                    <span [class.checked]="isQuestionCheckedForPrint('autorisation_operer', 'Non')">☐ Non</span>
+                    <span [class.checked]="isQuestionCheckedForPrint('autorisation_operer', 'N/A')">☐ N/A</span>
+                  </div>
+                </div>
+
+                <div class="print-item">
+                  <p><strong>L'intervention et le site opératoire sont confirmés :</strong></p>
+                  <p class="indented">- idéalement par le patient et, dans tous les cas, par le dossier ou procédure spécifique</p>
+                  <p class="indented">- la documentation clinique et sans clinique nécessaire est disponible en salle</p>
+                  <div class="checkbox-print">
+                    <span [class.checked]="isQuestionCheckedForPrint('intervention_site', 'Oui')">☐ Oui</span>
+                    <span [class.checked]="isQuestionCheckedForPrint('intervention_site', 'Non')">☐ Non</span>
+                    <span [class.checked]="isQuestionCheckedForPrint('intervention_site', 'N/A')">☐ N/A</span>
+                  </div>
+                </div>
+
+                <div class="print-item">
+                  <p><strong>Le mode d'installation est connu de l'équipe en salle, cohérent avec le site / l'intervention et non dangereux pour le patient</strong></p>
+                  <div class="checkbox-print">
+                    <span [class.checked]="isQuestionCheckedForPrint('mode_installation', 'Oui')">☐ Oui</span>
+                    <span [class.checked]="isQuestionCheckedForPrint('mode_installation', 'Non')">☐ Non</span>
+                    <span [class.checked]="isQuestionCheckedForPrint('mode_installation', 'N/A')">☐ N/A</span>
+                  </div>
+                </div>
+
+                <div class="print-item">
+                  <p><strong>La préparation cutanée de l'opéré est documentée dans la fiche de liaison service / bloc opératoire (ou autre procédure en œuvre dans l'établissement)</strong></p>
+                  <div class="checkbox-print">
+                    <span [class.checked]="isQuestionCheckedForPrint('preparation_cutanee', 'Oui')">☐ Oui</span>
+                    <span [class.checked]="isQuestionCheckedForPrint('preparation_cutanee', 'Non')">☐ Non</span>
+                    <span [class.checked]="isQuestionCheckedForPrint('preparation_cutanee', 'N/A')">☐ N/A</span>
+                  </div>
+                </div>
+
+                <div class="print-item">
+                  <p><strong>L'équipement / le matériel nécessaires pour l'intervention sont vérifiés et adaptés au poids et à la taille du patient</strong></p>
+                  <p class="indented">- pour la partie chirurgicale</p>
+                  <p class="indented">- pour la partie anesthésique</p>
+                  <p class="indented">- Actes aux piles en charge anesthésique</p>
+                  <div class="checkbox-print">
+                    <span [class.checked]="isQuestionCheckedForPrint('equipement_materiel', 'Oui')">☐ Oui</span>
+                    <span [class.checked]="isQuestionCheckedForPrint('equipement_materiel', 'Non')">☐ Non</span>
+                    <span [class.checked]="isQuestionCheckedForPrint('equipement_materiel', 'N/A')">☐ N/A</span>
+                  </div>
+                </div>
               </div>
+
+              <hr>
+
+              <!-- SECTION AVANT INTERVENTION CHIRURGICALE -->
+              <div class="print-section">
+                <h2>AVANT INTERVENTION CHIRURGICALE</h2>
+                <p class="print-subtitle"><strong>Temps de pause avant incision (appelé aussi time-out)</strong></p>
+                
+                <div class="print-item">
+                  <p><strong>Vérification « ultime » cuisée au sein de l'équipe en présence des chirurgiens(s), anesthésiste(s), IADE-BODEF/IDE</strong></p>
+                  <p class="indented">- identité patient confirmée</p>
+                  <p class="indented">- intervention prévue confirmée</p>
+                  <p class="indented">- site opératoire confirmée</p>
+                  <p class="indented">- installation correcte confirmée</p>
+                  <p class="indented">- documents nécessaires disponibles (notamment imaginé)</p>
+                  <div class="checkbox-print">
+                    <span [class.checked]="isQuestionCheckedForPrint('verification_ultime', 'Oui')">☐ Oui</span>
+                    <span [class.checked]="isQuestionCheckedForPrint('verification_ultime', 'Non')">☐ Non</span>
+                    <span [class.checked]="isQuestionCheckedForPrint('verification_ultime', 'N/A')">☐ N/A</span>
+                  </div>
+                </div>
+
+                <div class="print-item">
+                  <p><strong>Partage des informations essentielles oralement au sein de l'équipe sur les éléments à risque / étapes critiques de l'intervention (time-out)</strong></p>
+                  <p class="indented">- sur le plan chirurgical</p>
+                  <p class="indented-small">(temps opératoire difficile, points spécifiques de l'intervention, identifications des matériels nécessaires, confirmation de leur opérationnalité, etc.)</p>
+                  <p class="indented">- sur le plan anesthésique</p>
+                  <p class="indented-small">Actes aux piles en charge anesthésique (tommes potentiels liés au niveau (hypothermie, etc.) ou à des traitements réinvestiment maintenus, etc.)</p>
+                  <div class="checkbox-print">
+                    <span [class.checked]="isQuestionCheckedForPrint('partage_informations', 'Oui')">☐ Oui</span>
+                    <span [class.checked]="isQuestionCheckedForPrint('partage_informations', 'Non')">☐ Non</span>
+                    <span [class.checked]="isQuestionCheckedForPrint('partage_informations', 'N/A')">☐ N/A</span>
+                  </div>
+                </div>
+              </div>
+
+              <hr>
+
+              <!-- SECTION APRÈS INTERVENTION -->
+              <div class="print-section">
+                <h2>APRÈS INTERVENTION</h2>
+                <p class="print-subtitle"><strong>Pause avant sortie de salle d'opération</strong></p>
+                
+                <div class="print-item">
+                  <p><strong>Confirmation orale par le personnel auprès de l'équipe :</strong></p>
+                  <p class="indented">- de l'intervention enregistrée</p>
+                  <p class="indented">- du compte final correct</p>
+                  <p class="indented">- des compresses, aiguilles, instruments, etc.</p>
+                  <p class="indented">- de l'étiquetage des prélèvements, pièces opératoires, etc.</p>
+                  <p class="indented">- à des événements indésirables ou porteurs de risques médicaux sont suivants :</p>
+                  <p class="indented">- oni-lis fait l'objet d'un signalement / déclaration ?</p>
+                  <p class="indented">- Si aucun événement indésirable n'est survenu pendant l'intervention couler M/A</p>
+                  <div class="checkbox-print">
+                    <span [class.checked]="isQuestionCheckedForPrint('confirmation_orale', 'Oui')">☐ Oui</span>
+                    <span [class.checked]="isQuestionCheckedForPrint('confirmation_orale', 'Non')">☐ Non</span>
+                    <span [class.checked]="isQuestionCheckedForPrint('confirmation_orale', 'N/A')">☐ N/A</span>
+                  </div>
+                </div>
+
+                <div class="print-item">
+                  <p><strong>Les prescriptions et la surveillance post-opératoires (y compris les seuils d'alerte spécifiques) sont faites complètement par l'équipe chirurgicale et anesthésique et adaptées à l'âge, au poids et à la taille du patient</strong></p>
+                  <div class="checkbox-print">
+                    <span [class.checked]="isQuestionCheckedForPrint('prescriptions_surveillance', 'Oui')">☐ Oui</span>
+                    <span [class.checked]="isQuestionCheckedForPrint('prescriptions_surveillance', 'Non')">☐ Non</span>
+                    <span [class.checked]="isQuestionCheckedForPrint('prescriptions_surveillance', 'N/A')">☐ N/A</span>
+                  </div>
+                </div>
+              </div>
+
             </div>
 
-            <div class="print-item">
-              <p><strong>L'intervention et le site opératoire sont confirmés :</strong></p>
-              <p class="indented">- idéalement par le patient et, dans tous les cas, par le dossier ou procédure spécifique</p>
-              <p class="indented">- la documentation clinique et sans clinique nécessaire est disponible en salle</p>
-              <div class="checkbox-print">
-                <span [class.checked]="isQuestionCheckedForPrint('intervention_site', 'Oui')">☐ Oui</span>
-                <span [class.checked]="isQuestionCheckedForPrint('intervention_site', 'Non')">☐ Non</span>
-                <span [class.checked]="isQuestionCheckedForPrint('intervention_site', 'N/A')">☐ N/A</span>
+            <!-- TEMPLATE PAR DÉFAUT POUR LES AUTRES CHECKLISTS -->
+            <div *ngSwitchDefault class="print-sections-container">
+              
+              <!-- AFFICHAGE GÉNÉRIQUE BASÉ SUR LES ÉTAPES RÉELLES -->
+              <div *ngFor="let etape of etapes; let i = index" class="print-section">
+                <h2>{{ etape.nom.toUpperCase() }}</h2>
+                
+                <div *ngFor="let question of etape.questions" class="print-item">
+                  <p><strong>{{ question.texte }}</strong></p>
+                  <div class="checkbox-print">
+                    <span *ngIf="question.type === 'Boolean' || question.type === 'BooleanNA'"
+                          [class.checked]="isQuestionResponse(question.id, 'Oui')">☐ Oui</span>
+                    <span *ngIf="question.type === 'Boolean' || question.type === 'BooleanNA'"
+                          [class.checked]="isQuestionResponse(question.id, 'Non')">☐ Non</span>
+                    <span *ngIf="question.type === 'BooleanNA'"
+                          [class.checked]="isQuestionResponse(question.id, 'N/A')">☐ N/A</span>
+                    
+                    <!-- Pour les questions texte -->
+                    <div *ngIf="question.type === 'Texte'" class="text-response-print">
+                      <strong>Réponse :</strong> {{ getQuestionResponse(question.id) || 'Non renseigné' }}
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
 
-            <div class="print-item">
-              <p><strong>Le mode d'installation est connu de l'équipe en salle, cohérent avec le site / l'intervention et non dangereux pour le patient</strong></p>
-              <div class="checkbox-print">
-                <span [class.checked]="isQuestionCheckedForPrint('mode_installation', 'Oui')">☐ Oui</span>
-                <span [class.checked]="isQuestionCheckedForPrint('mode_installation', 'Non')">☐ Non</span>
-                <span [class.checked]="isQuestionCheckedForPrint('mode_installation', 'N/A')">☐ N/A</span>
-              </div>
-            </div>
-
-            <div class="print-item">
-              <p><strong>La préparation cutanée de l'opéré est documentée dans la fiche de liaison service / bloc opératoire (ou autre procédure en œuvre dans l'établissement)</strong></p>
-              <div class="checkbox-print">
-                <span [class.checked]="isQuestionCheckedForPrint('preparation_cutanee', 'Oui')">☐ Oui</span>
-                <span [class.checked]="isQuestionCheckedForPrint('preparation_cutanee', 'Non')">☐ Non</span>
-                <span [class.checked]="isQuestionCheckedForPrint('preparation_cutanee', 'N/A')">☐ N/A</span>
-              </div>
-            </div>
-
-            <div class="print-item">
-              <p><strong>L'équipement / le matériel nécessaires pour l'intervention sont vérifiés et adaptés au poids et à la taille du patient</strong></p>
-              <p class="indented">- pour la partie chirurgicale</p>
-              <p class="indented">- pour la partie anesthésique</p>
-              <p class="indented">- Actes aux piles en charge anesthésique</p>
-              <div class="checkbox-print">
-                <span [class.checked]="isQuestionCheckedForPrint('equipement_materiel', 'Oui')">☐ Oui</span>
-                <span [class.checked]="isQuestionCheckedForPrint('equipement_materiel', 'Non')">☐ Non</span>
-                <span [class.checked]="isQuestionCheckedForPrint('equipement_materiel', 'N/A')">☐ N/A</span>
-              </div>
-            </div>
-
-            <div class="print-item">
-              <p><strong>Le patient présente-t-il un :</strong></p>
-              <p class="indented">- risque allergique</p>
-              <p class="indented">- risque d'inhalation, de difficulté d'intubation ou de ventilation au masque</p>
-              <p class="indented">- risque de saignement important</p>
             </div>
           </div>
 
-          <hr>
-
-          <!-- SECTION AVANT INTERVENTION CHIRURGICALE -->
-          <div class="print-section">
-            <h2>AVANT INTERVENTION CHIRURGICALE</h2>
-            <p class="print-subtitle"><strong>Temps de pause avant incision (appelé aussi time-out)</strong></p>
-            
-            <div class="print-item">
-              <p><strong>Vérification « ultime » cuisée au sein de l'équipe en présence des chirurgiens(s), anesthésiste(s), IADE-BODEF/IDE</strong></p>
-              <p class="indented">- identité patient confirmée</p>
-              <p class="indented">- intervention prévue confirmée</p>
-              <p class="indented">- site opératoire confirmée</p>
-              <p class="indented">- installation correcte confirmée</p>
-              <p class="indented">- documents nécessaires disponibles (notamment imaginé)</p>
-              <div class="checkbox-print">
-                <span [class.checked]="isQuestionCheckedForPrint('verification_ultime', 'Oui')">☐ Oui</span>
-                <span [class.checked]="isQuestionCheckedForPrint('verification_ultime', 'Non')">☐ Non</span>
-                <span [class.checked]="isQuestionCheckedForPrint('verification_ultime', 'N/A')">☐ N/A</span>
-              </div>
-            </div>
-
-            <div class="print-item">
-              <p><strong>Partage des informations essentielles oralement au sein de l'équipe sur les éléments à risque / étapes critiques de l'intervention (time-out)</strong></p>
-              <p class="indented">- sur le plan chirurgical</p>
-              <p class="indented-small">(temps opératoire difficile, points spécifiques de l'intervention, identifications des matériels nécessaires, confirmation de leur opérationnalité, etc.)</p>
-              <p class="indented">- sur le plan anesthésique</p>
-              <p class="indented-small">Actes aux piles en charge anesthésique (tommes potentiels liés au niveau (hypothermie, etc.) ou à des traitements réinvestiment maintenus, etc.)</p>
-              <div class="checkbox-print">
-                <span [class.checked]="isQuestionCheckedForPrint('partage_informations', 'Oui')">☐ Oui</span>
-                <span [class.checked]="isQuestionCheckedForPrint('partage_informations', 'Non')">☐ Non</span>
-                <span [class.checked]="isQuestionCheckedForPrint('partage_informations', 'N/A')">☐ N/A</span>
-              </div>
-            </div>
-
-            <div class="print-item">
-              <p><strong>L'antholymphatose a été effectuée selon les recommandations et pronostics en vigueur dans l'établissement</strong></p>
-              <p><strong>La préparation du champ opératoire est réalisée selon le protocole en vigueur dans l'établissement</strong></p>
-            </div>
-          </div>
-
-          <hr>
-
-          <!-- SECTION APRÈS INTERVENTION -->
-          <div class="print-section">
-            <h2>APRÈS INTERVENTION</h2>
-            <p class="print-subtitle"><strong>Pause avant sortie de salle d'opération</strong></p>
-            
-            <div class="print-item">
-              <p><strong>Confirmation orale par le personnel auprès de l'équipe :</strong></p>
-              <p class="indented">- de l'intervention enregistrée</p>
-              <p class="indented">- du compte final correct</p>
-              <p class="indented">- des compresses, aiguilles, instruments, etc.</p>
-              <p class="indented">- de l'étiquetage des prélèvements, pièces opératoires, etc.</p>
-              <p class="indented">- à des événements indésirables ou porteurs de risques médicaux sont suivants :</p>
-              <p class="indented">- oni-lis fait l'objet d'un signalement / déclaration ?</p>
-              <p class="indented">- Si aucun événement indésirable n'est survenu pendant l'intervention couler M/A</p>
-              <div class="checkbox-print">
-                <span [class.checked]="isQuestionCheckedForPrint('confirmation_orale', 'Oui')">☐ Oui</span>
-                <span [class.checked]="isQuestionCheckedForPrint('confirmation_orale', 'Non')">☐ Non</span>
-                <span [class.checked]="isQuestionCheckedForPrint('confirmation_orale', 'N/A')">☐ N/A</span>
-              </div>
-            </div>
-
-            <div class="print-item">
-              <p><strong>Les prescriptions et la surveillance post-opératoires (y compris les seuils d'alerte spécifiques) sont faites complètement par l'équipe chirurgicale et anesthésique et adaptées à l'âge, au poids et à la taille du patient</strong></p>
-              <div class="checkbox-print">
-                <span [class.checked]="isQuestionCheckedForPrint('prescriptions_surveillance', 'Oui')">☐ Oui</span>
-                <span [class.checked]="isQuestionCheckedForPrint('prescriptions_surveillance', 'Non')">☐ Non</span>
-                <span [class.checked]="isQuestionCheckedForPrint('prescriptions_surveillance', 'N/A')">☐ N/A</span>
-              </div>
-            </div>
-          </div>
-
-          <hr>
-
-          <!-- SECTION DÉCISION FINALE -->
+          <!-- SECTION DÉCISION FINALE (COMMUNE À TOUTES LES CHECKLISTS) -->
           <div class="print-section decision-section">
             <h2>DÉCISION FINALE</h2>
             
             <div class="decision-finale-print">
               <div class="decision-option">
-                <span [class.checked]="decisionFinale === 'Oui'">☐ GO = OK pour incision</span>
+                <span [class.checked]="decisionFinale === 'Oui'">☐ GO = Intervention validée</span>
               </div>
               <div class="decision-option">
-                <span [class.checked]="decisionFinale === 'Non'">☐ NO GO = Pas d'incision !</span>
+                <span [class.checked]="decisionFinale === 'Non'">☐ NO GO = Intervention non validée</span>
               </div>
             </div>
 
             <div *ngIf="decisionFinale === 'Non'" class="consequences-print">
-              <p><strong>Si No Go : conséquence sur l'intervention ?</strong></p>
+              <p><strong>Conséquence sur l'intervention :</strong></p>
               <div class="checkbox-print">
                 <span [class.checked]="consequence === 'Retard'">☐ Retard</span>
                 <span [class.checked]="consequence === 'Annulation'">☐ Annulation</span>
@@ -539,23 +651,31 @@
             </div>
           </div>
 
-          <!-- SIGNATURES -->
+          <!-- SIGNATURES (ADAPTÉES AU TYPE DE CHECKLIST) -->
           <div class="signatures-section">
             <p class="signature-title"><strong>SELON PROCÉDURE EN VIGUEUR DANS L'ÉTABLISSEMENT</strong></p>
             <p class="signature-subtitle">Attestation que la check-list a été renseignée suite à un partage des informations entre les membres de l'équipe</p>
             
             <div class="signatures-grid">
-              <div class="signature-box">
+              <div *ngIf="getChecklistPrintTemplate() === 'anesthesie'" class="signature-box">
+                <div class="signature-line"></div>
+                <p>Anesthésiste Référent</p>
+              </div>
+              <div *ngIf="getChecklistPrintTemplate() === 'anesthesie'" class="signature-box">
+                <div class="signature-line"></div>
+                <p>IADE</p>
+              </div>
+              <div *ngIf="getChecklistPrintTemplate() === 'bloc_operatoire'" class="signature-box">
                 <div class="signature-line"></div>
                 <p>Chirurgien</p>
               </div>
-              <div class="signature-box">
+              <div *ngIf="getChecklistPrintTemplate() === 'bloc_operatoire'" class="signature-box">
                 <div class="signature-line"></div>
                 <p>Anesthésiste / IADE</p>
               </div>
               <div class="signature-box">
                 <div class="signature-line"></div>
-                <p>Coordonnateur CL</p>
+                <p>Coordonnateur</p>
               </div>
             </div>
           </div>

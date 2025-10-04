@@ -187,6 +187,73 @@ export class ChecklistFormulaireComponent implements OnInit {
     return 'status-info';
   }
 
+  // === MÉTHODES POUR L'IMPRESSION SPÉCIFIQUE À CHAQUE CHECKLIST ===
+
+  getChecklistPrintTemplate(): string {
+    if (!this.selectedChecklist) return 'default';
+    
+    // Déterminer le template basé sur le nom ou l'ID de la checklist
+    const checklistName = this.selectedChecklist.libelle.toLowerCase();
+    
+    if (checklistName.includes('anesthés') || checklistName.includes('anesthes')) {
+      return 'anesthesie';
+    } else if (checklistName.includes('bloc') || checklistName.includes('opératoire') || checklistName.includes('operatoire')) {
+      return 'bloc_operatoire';
+    } else if (checklistName.includes('chirurgie') || checklistName.includes('chirurgical')) {
+      return 'chirurgie';
+    } else {
+      return 'default';
+    }
+  }
+
+  // Méthode pour obtenir le titre d'impression adapté
+  getPrintTitle(): string {
+    const template = this.getChecklistPrintTemplate();
+    
+    switch(template) {
+      case 'anesthesie':
+        return 'CHECK-LIST « SÉCURITÉ ANESTHÉSIQUE »';
+      case 'bloc_operatoire':
+        return 'CHECK-LIST « SÉCURITÉ DU PATIENT AU BLOC OPÉRATOIRE »';
+      case 'chirurgie':
+        return 'CHECK-LIST « SÉCURITÉ CHIRURGICALE »';
+      default:
+        return `CHECK-LIST « ${this.checklistNom.toUpperCase()} »`;
+    }
+  }
+
+  // Méthode pour obtenir la version
+  getPrintVersion(): string {
+    const template = this.getChecklistPrintTemplate();
+    
+    switch(template) {
+      case 'anesthesie':
+        return 'Version 2024';
+      case 'bloc_operatoire':
+        return 'Version 2018';
+      case 'chirurgie':
+        return 'Version 2023';
+      default:
+        return 'Version 1.0';
+    }
+  }
+
+  // Méthode pour obtenir la devise
+  getPrintMotto(): string {
+    const template = this.getChecklistPrintTemplate();
+    
+    switch(template) {
+      case 'anesthesie':
+        return '« Vérifier pour anesthésier en sécurité »';
+      case 'bloc_operatoire':
+        return '« Vérifier ensemble pour décider »';
+      case 'chirurgie':
+        return '« Sécuriser chaque geste »';
+      default:
+        return '« Checklist médicale »';
+    }
+  }
+
   // === MÉTHODES EXISTANTES ===
 
   private loadCurrentUser(): void {
@@ -230,9 +297,6 @@ export class ChecklistFormulaireComponent implements OnInit {
         // Charger les étapes validées après avoir initialisé les indices
         this.loadEtapesValidees();
         this.loadPartialProgress();
-
-        // DEBUG: Vérifier le mapping
-        this.debugQuestionMapping();
       },
       error: (_err: any) => {
         this.loading = false;
@@ -245,40 +309,51 @@ export class ChecklistFormulaireComponent implements OnInit {
   private initializeQuestionMappingForPrint(): void {
     this.questionMapping = {};
     
-    console.log('🔍 Initialisation du mapping pour impression...');
-    console.log('📋 Étapes chargées:', this.etapes);
-
-    // Mapping COMPLET basé sur le PDF
-    const printQuestions = [
-      // Avant induction anesthésique
-      { key: 'identite_patient', keywords: ["identité", "patient", "correcte"] },
-      { key: 'autorisation_operer', keywords: ["autorisation", "opérer", "signée", "parents"] },
-      { key: 'intervention_site', keywords: ["intervention", "site", "opératoire", "confirmés"] },
-      { key: 'mode_installation', keywords: ["mode", "installation", "équipe", "salle"] },
-      { key: 'preparation_cutanee', keywords: ["préparation", "cutanée", "documentée"] },
-      { key: 'equipement_materiel', keywords: ["équipement", "matériel", "vérifiés", "poids"] },
+    const template = this.getChecklistPrintTemplate();
+    
+    if (template === 'anesthesie') {
+      // Mapping pour la checklist anesthésie
+      const anesthesieQuestions = [
+        { key: 'consultation_anesthesie', keywords: ["consultation", "anesthésie", "conforme"] },
+        { key: 'bilan_biologique', keywords: ["bilan", "biologique", "jour"] },
+        { key: 'jeune_pre_operatoire', keywords: ["jeûne", "pré-opératoire", "respecté"] },
+        { key: 'allergies_documentees', keywords: ["allergies", "connues", "documentées"] },
+        { key: 'materiel_intubation', keywords: ["matériel", "intubation", "vérifié"] },
+        { key: 'medicaments_anesthesie', keywords: ["médicaments", "anesthésie", "préparés"] },
+        { key: 'voies_veineuses', keywords: ["voies", "veineuses", "périphériques"] },
+        { key: 'monitorage_standard', keywords: ["monitorage", "standard", "connecté"] }
+      ];
       
-      // Avant intervention chirurgicale
-      { key: 'verification_ultime', keywords: ["vérification", "ultime", "équipe", "chirurgiens"] },
-      { key: 'partage_informations', keywords: ["partage", "informations", "essentielles", "oralement"] },
+      anesthesieQuestions.forEach(question => {
+        const realQuestion = this.findQuestionByKeywords(question.keywords);
+        if (realQuestion) {
+          this.questionMapping[question.key] = realQuestion.id;
+        }
+      });
       
-      // Après intervention
-      { key: 'confirmation_orale', keywords: ["confirmation", "orale", "personnel", "équipe"] },
-      { key: 'prescriptions_surveillance', keywords: ["prescriptions", "surveillance", "post-opératoires"] }
-    ];
-
-    // Associer chaque question d'impression à une question réelle
-    printQuestions.forEach(printQuestion => {
-      const realQuestion = this.findQuestionByKeywords(printQuestion.keywords);
-      if (realQuestion) {
-        this.questionMapping[printQuestion.key] = realQuestion.id;
-        console.log(`✅ Mapping réussi: ${printQuestion.key} -> ID: ${realQuestion.id}`);
-      } else {
-        console.warn(`❌ Question non trouvée pour: ${printQuestion.keywords.join(', ')}`);
-      }
-    });
-
-    console.log('🗺️ Mapping final:', this.questionMapping);
+    } else if (template === 'bloc_operatoire') {
+      // Mapping existant pour le bloc opératoire
+      const blocQuestions = [
+        { key: 'identite_patient', keywords: ["identité", "patient", "correcte"] },
+        { key: 'autorisation_operer', keywords: ["autorisation", "opérer", "signée", "parents"] },
+        { key: 'intervention_site', keywords: ["intervention", "site", "opératoire", "confirmés"] },
+        { key: 'mode_installation', keywords: ["mode", "installation", "équipe", "salle"] },
+        { key: 'preparation_cutanee', keywords: ["préparation", "cutanée", "documentée"] },
+        { key: 'equipement_materiel', keywords: ["équipement", "matériel", "vérifiés", "poids"] },
+        { key: 'verification_ultime', keywords: ["vérification", "ultime", "équipe", "chirurgiens"] },
+        { key: 'partage_informations', keywords: ["partage", "informations", "essentielles", "oralement"] },
+        { key: 'confirmation_orale', keywords: ["confirmation", "orale", "personnel", "équipe"] },
+        { key: 'prescriptions_surveillance', keywords: ["prescriptions", "surveillance", "post-opératoires"] }
+      ];
+      
+      blocQuestions.forEach(question => {
+        const realQuestion = this.findQuestionByKeywords(question.keywords);
+        if (realQuestion) {
+          this.questionMapping[question.key] = realQuestion.id;
+        }
+      });
+    }
+    // Pour le template par défaut, pas besoin de mapping spécifique
   }
 
   // Recherche améliorée par mots-clés
@@ -310,30 +385,6 @@ export class ChecklistFormulaireComponent implements OnInit {
     }
 
     return bestMatch ? bestMatch.question : null;
-  }
-
-  // Méthode de debug pour vérifier le mapping
-  private debugQuestionMapping(): void {
-    console.log('🐛 DEBUG - Vérification du mapping:');
-    
-    const testMappings = [
-      { key: 'identite_patient', expected: "identité" },
-      { key: 'autorisation_operer', expected: "autorisation" },
-      { key: 'intervention_site', expected: "intervention" },
-      { key: 'mode_installation', expected: "installation" },
-      { key: 'preparation_cutanee', expected: "préparation" },
-      { key: 'equipement_materiel', expected: "équipement" },
-      { key: 'verification_ultime', expected: "vérification" },
-      { key: 'partage_informations', expected: "partage" },
-      { key: 'confirmation_orale', expected: "confirmation" },
-      { key: 'prescriptions_surveillance', expected: "prescriptions" }
-    ];
-
-    testMappings.forEach(test => {
-      const questionId = this.questionMapping[test.key];
-      const response = questionId ? this.getQuestionResponse(questionId) : 'NON TROUVÉ';
-      console.log(`🔍 ${test.key}: ID=${questionId}, Réponse=${response}`);
-    });
   }
 
   // === GETTERS ===
@@ -717,7 +768,6 @@ export class ChecklistFormulaireComponent implements OnInit {
   isQuestionCheckedForPrint(questionKey: string, value: string): boolean {
     const questionId = this.questionMapping[questionKey];
     if (!questionId) {
-      console.warn(`⚠️ Question non trouvée dans le mapping: ${questionKey}`);
       return false;
     }
     
@@ -756,7 +806,7 @@ export class ChecklistFormulaireComponent implements OnInit {
         <!DOCTYPE html>
         <html>
         <head>
-          <title>Checklist Sécurité du Patient au Bloc Opératoire</title>
+          <title>${this.getPrintTitle()}</title>
           <meta charset="UTF-8">
           <style>
             body { 
@@ -840,6 +890,12 @@ export class ChecklistFormulaireComponent implements OnInit {
             .checkbox-print span:not(.checked)::before {
               content: "☐";
               margin-right: 5px;
+            }
+            .text-response-print {
+              margin-top: 5px;
+              padding: 5px;
+              border: 1px solid #ccc;
+              background: #f9f9f9;
             }
             .decision-section {
               background: #f8f8f8;
