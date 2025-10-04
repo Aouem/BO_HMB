@@ -52,6 +52,9 @@ export class ChecklistFormulaireComponent implements OnInit {
   // Mapping des questions pour l'impression
   questionMapping: { [key: string]: number } = {};
 
+  // Gestion des templates personnalisés
+  customPrintTemplates: { [key: number]: string } = {};
+
   constructor(
     private formService: FormService,
     private checkListService: CheckListService,
@@ -66,6 +69,7 @@ export class ChecklistFormulaireComponent implements OnInit {
 
     this.loadCurrentUser();
     this.loadAllChecklists();
+    this.loadCustomPrintTemplates();
   }
 
   // === NOUVELLES MÉTHODES POUR LA SÉLECTION DE CHECKLIST ===
@@ -91,6 +95,7 @@ export class ChecklistFormulaireComponent implements OnInit {
     this.checklistNom = checklist.libelle;
     this.showChecklistSelection = false;
     this.loadChecklist();
+    this.loadCustomPrintTemplates();
   }
 
   backToSelection(): void {
@@ -187,12 +192,17 @@ export class ChecklistFormulaireComponent implements OnInit {
     return 'status-info';
   }
 
-  // === MÉTHODES POUR L'IMPRESSION SPÉCIFIQUE À CHAQUE CHECKLIST ===
+  // === MÉTHODES POUR L'IMPRESSION DYNAMIQUE ===
 
   getChecklistPrintTemplate(): string {
     if (!this.selectedChecklist) return 'default';
     
-    // Déterminer le template basé sur le nom ou l'ID de la checklist
+    // Vérifier d'abord si un template personnalisé est défini pour cette checklist
+    if (this.customPrintTemplates[this.selectedChecklist.id]) {
+      return this.customPrintTemplates[this.selectedChecklist.id];
+    }
+    
+    // Détection automatique basée sur le nom
     const checklistName = this.selectedChecklist.libelle.toLowerCase();
     
     if (checklistName.includes('anesthés') || checklistName.includes('anesthes')) {
@@ -201,8 +211,34 @@ export class ChecklistFormulaireComponent implements OnInit {
       return 'bloc_operatoire';
     } else if (checklistName.includes('chirurgie') || checklistName.includes('chirurgical')) {
       return 'chirurgie';
+    } else if (checklistName.includes('urgence') || checklistName.includes('emergency')) {
+      return 'urgence';
+    } else if (checklistName.includes('radiologie') || checklistName.includes('radiology')) {
+      return 'radiologie';
+    } else if (checklistName.includes('laboratoire') || checklistName.includes('laboratory')) {
+      return 'laboratoire';
     } else {
       return 'default';
+    }
+  }
+
+  // Méthode pour définir un template personnalisé pour une checklist
+  setCustomPrintTemplate(checklistId: number, template: string): void {
+    this.customPrintTemplates[checklistId] = template;
+    // Sauvegarder dans le localStorage pour persister
+    localStorage.setItem('customPrintTemplates', JSON.stringify(this.customPrintTemplates));
+  }
+
+  // Méthode pour charger les templates personnalisés
+  loadCustomPrintTemplates(): void {
+    const saved = localStorage.getItem('customPrintTemplates');
+    if (saved) {
+      try {
+        this.customPrintTemplates = JSON.parse(saved);
+      } catch (e) {
+        console.error('Erreur lors du chargement des templates personnalisés:', e);
+        this.customPrintTemplates = {};
+      }
     }
   }
 
@@ -217,6 +253,12 @@ export class ChecklistFormulaireComponent implements OnInit {
         return 'CHECK-LIST « SÉCURITÉ DU PATIENT AU BLOC OPÉRATOIRE »';
       case 'chirurgie':
         return 'CHECK-LIST « SÉCURITÉ CHIRURGICALE »';
+      case 'urgence':
+        return 'CHECK-LIST « URGENCES MÉDICALES »';
+      case 'radiologie':
+        return 'CHECK-LIST « RADIOLOGIE ET IMAGERIE MÉDICALE »';
+      case 'laboratoire':
+        return 'CHECK-LIST « LABORATOIRE D\'ANALYSES MÉDICALES »';
       default:
         return `CHECK-LIST « ${this.checklistNom.toUpperCase()} »`;
     }
@@ -233,6 +275,12 @@ export class ChecklistFormulaireComponent implements OnInit {
         return 'Version 2018';
       case 'chirurgie':
         return 'Version 2023';
+      case 'urgence':
+        return 'Version 2024';
+      case 'radiologie':
+        return 'Version 2023';
+      case 'laboratoire':
+        return 'Version 2024';
       default:
         return 'Version 1.0';
     }
@@ -249,9 +297,37 @@ export class ChecklistFormulaireComponent implements OnInit {
         return '« Vérifier ensemble pour décider »';
       case 'chirurgie':
         return '« Sécuriser chaque geste »';
+      case 'urgence':
+        return '« Rapidité et sécurité »';
+      case 'radiologie':
+        return '« Précision et qualité »';
+      case 'laboratoire':
+        return '« Exactitude et fiabilité »';
       default:
-        return '« Checklist médicale »';
+        return `« ${this.checklistNom} »`;
     }
+  }
+
+  // Nouvelle méthode pour gérer la sélection de template d'impression
+  selectPrintTemplate(template: string): void {
+    if (this.selectedChecklist) {
+      this.setCustomPrintTemplate(this.selectedChecklist.id, template);
+      // Recharger le mapping des questions pour le nouveau template
+      this.initializeQuestionMappingForPrint();
+    }
+  }
+
+  // Méthode pour obtenir la liste des templates disponibles
+  getAvailableTemplates(): {value: string, label: string}[] {
+    return [
+      { value: 'default', label: 'Template Générique' },
+      { value: 'bloc_operatoire', label: 'Bloc Opératoire' },
+      { value: 'anesthesie', label: 'Anesthésie' },
+      { value: 'chirurgie', label: 'Chirurgie' },
+      { value: 'urgence', label: 'Urgences' },
+      { value: 'radiologie', label: 'Radiologie' },
+      { value: 'laboratoire', label: 'Laboratoire' }
+    ];
   }
 
   // === MÉTHODES EXISTANTES ===
@@ -347,6 +423,48 @@ export class ChecklistFormulaireComponent implements OnInit {
       ];
       
       blocQuestions.forEach(question => {
+        const realQuestion = this.findQuestionByKeywords(question.keywords);
+        if (realQuestion) {
+          this.questionMapping[question.key] = realQuestion.id;
+        }
+      });
+    } else if (template === 'urgence') {
+      // Mapping pour les urgences
+      const urgenceQuestions = [
+        { key: 'hemodynamique_stable', keywords: ["hémodynamique", "stable", "tension"] },
+        { key: 'voies_aeriennes_libres', keywords: ["voies", "aériennes", "libres"] },
+        { key: 'glasgow_evalue', keywords: ["glasgow", "évalué", "score"] }
+      ];
+      
+      urgenceQuestions.forEach(question => {
+        const realQuestion = this.findQuestionByKeywords(question.keywords);
+        if (realQuestion) {
+          this.questionMapping[question.key] = realQuestion.id;
+        }
+      });
+    } else if (template === 'radiologie') {
+      // Mapping pour la radiologie
+      const radiologieQuestions = [
+        { key: 'consentement_radio', keywords: ["consentement", "signé", "éclairé"] },
+        { key: 'allergie_contraste', keywords: ["allergie", "contraste", "produit"] },
+        { key: 'fonction_renale', keywords: ["fonction", "rénale", "créatinine"] }
+      ];
+      
+      radiologieQuestions.forEach(question => {
+        const realQuestion = this.findQuestionByKeywords(question.keywords);
+        if (realQuestion) {
+          this.questionMapping[question.key] = realQuestion.id;
+        }
+      });
+    } else if (template === 'laboratoire') {
+      // Mapping pour le laboratoire
+      const laboratoireQuestions = [
+        { key: 'echantillon_identifie', keywords: ["échantillon", "identifié", "étiqueté"] },
+        { key: 'transport_respecte', keywords: ["transport", "conditions", "respectées"] },
+        { key: 'controle_qualite', keywords: ["contrôle", "qualité", "instruments"] }
+      ];
+      
+      laboratoireQuestions.forEach(question => {
         const realQuestion = this.findQuestionByKeywords(question.keywords);
         if (realQuestion) {
           this.questionMapping[question.key] = realQuestion.id;
