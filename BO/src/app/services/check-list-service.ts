@@ -82,14 +82,29 @@ export class CheckListService {
     );
   }
 
-  updateCheckList(id: number, dto: CreateCheckListDto): Observable<CheckListDto> {
-    return this.http.put<CheckListDto>(`${this.apiUrl}/${id}`, dto).pipe(
-      catchError(error => {
-        console.error(`❌ Erreur mise à jour checklist ${id}:`, error);
-        return throwError(() => new Error('Erreur lors de la mise à jour de la checklist'));
-      })
-    );
-  }
+// Dans check-list-service.ts
+updateCheckList(id: number, dto: CreateCheckListDto): Observable<CheckListDto> {
+  console.log('📤 Envoi mise à jour checklist:', {
+    id: id,
+    payload: dto
+  });
+
+  return this.http.put<CheckListDto>(`${this.apiUrl}/${id}`, dto).pipe(
+    tap(response => {
+      console.log('✅ Réponse serveur mise à jour:', response);
+    }),
+    catchError(error => {
+      console.error('❌ Erreur détaillée serveur:', {
+        status: error.status,
+        statusText: error.statusText,
+        url: error.url,
+        error: error.error,
+        message: error.message
+      });
+      return throwError(() => new Error('Erreur lors de la mise à jour de la checklist'));
+    })
+  );
+}
 
   deleteCheckList(id: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${id}`).pipe(
@@ -355,4 +370,3 @@ getChecklistWithSubmissions(checklistId: number): Observable<AggregatedChecklist
     console.log('🧹 Cache local nettoyé pour checklist:', checklistId);
   }
 }
-

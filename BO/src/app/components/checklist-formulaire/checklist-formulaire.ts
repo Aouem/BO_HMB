@@ -618,20 +618,55 @@ export class ChecklistFormulaireComponent implements OnInit {
   }
 
   // === VALIDATION ÉTAPES ===
-  validerEtape() {
-    if (this.isEtapeComplete(this.currentEtapeIndex)) {
-      this.etapesValidees[this.currentEtapeIndex] = true;
-      this.savePartialProgress();
+// === VALIDATION ÉTAPES - VERSION AVEC PASSAGE DIRECT À LA DÉCISION ===
+validerEtape() {
+  if (this.isEtapeComplete(this.currentEtapeIndex)) {
+    this.etapesValidees[this.currentEtapeIndex] = true;
+    this.savePartialProgress();
 
-      if (this.currentEtapeIndex === this.etapes.length - 1) {
-        this.mode = 'etape';
-      } else {
-        this.currentEtapeIndex++;
-        this.currentQuestionIndex = 0;
-        this.savePartialProgress();
-      }
+    // Vérifier si c'est la dernière étape normale
+    const derniereEtapeNormaleIndex = this.getDerniereEtapeNormaleIndex();
+    
+    if (this.currentEtapeIndex === derniereEtapeNormaleIndex) {
+      // C'est la dernière étape normale, passer DIRECTEMENT à la décision
+      this.mode = 'etape'; // Retour à la vue d'ensemble
+      
+      // Optionnel : Faire défiler automatiquement vers la section décision
+      setTimeout(() => {
+        this.scrollToDecision();
+      }, 100);
+    } else {
+      // Ce n'est pas la dernière étape, passer à l'étape suivante
+      this.currentEtapeIndex++;
+      this.currentQuestionIndex = 0;
+      this.savePartialProgress();
     }
   }
+}
+
+// Méthode pour faire défiler vers la section décision
+private scrollToDecision(): void {
+  const decisionSection = document.querySelector('.decision-finale-section');
+  if (decisionSection) {
+    decisionSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
+
+// Vérifie si l'étape actuelle est la dernière étape normale
+isDerniereEtapeNormale(): boolean {
+  const derniereEtapeNormaleIndex = this.getDerniereEtapeNormaleIndex();
+  return this.currentEtapeIndex === derniereEtapeNormaleIndex;
+}
+
+// Nouvelle méthode pour obtenir l'index de la dernière étape normale
+private getDerniereEtapeNormaleIndex(): number {
+  const etapesNormales = this.getEtapesNormales();
+  if (etapesNormales.length === 0) return -1;
+  
+  // Retourner l'index de la dernière étape normale dans le tableau complet
+  const derniereEtapeNormale = etapesNormales[etapesNormales.length - 1];
+  return this.etapes.findIndex(etape => etape.id === derniereEtapeNormale.id);
+}
 
   reouvrirEtape(etapeIndex: number) {
     this.etapesValidees[etapeIndex] = false;

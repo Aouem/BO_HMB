@@ -289,12 +289,12 @@
             Suivant →
           </button>
 
-          <button *ngIf="isLastQuestionInEtape"
-                  class="btn-validate"
-                  (click)="validerEtape()"
-                  [disabled]="!isEtapeComplete(currentEtapeIndex)">
-            Valider l'étape ✓
-          </button>
+        <button *ngIf="isLastQuestionInEtape"
+        class="btn-validate"
+        (click)="validerEtape()"
+        [disabled]="!isEtapeComplete(currentEtapeIndex)">
+  {{ isDerniereEtapeNormale() ? 'Valider et passer à la décision ✓' : 'Valider l\'étape ✓' }}
+</button>
         </div>
       </div>
     </div>

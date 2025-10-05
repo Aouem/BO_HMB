@@ -14,6 +14,7 @@ interface QuestionFrontend {
   reponse?: string | null;
   height?: string;
   ordre?: number;
+  estObligatoire?: boolean;
 }
 
 interface EtapeFrontend {
@@ -71,119 +72,473 @@ export class ChecklistListComponent implements OnInit {
     this.loadChecklists();
   }
 
-  // === MÉTHODES DE DIAGNOSTIC ET DEBUG ===
+  // === MÉTHODES DE CHARGEMENT ===
 
-  // Méthode pour diagnostiquer le problème de mapping
-  diagnoseSubmissionProblem(): void {
-    console.log('🩺 Diagnostic du problème de soumissions pour TOUTES les checklists...');
-    
-    // Diagnostiquer pour chaque checklist
-    this.checklists.forEach(checklist => {
-      if (checklist.id) {
-        console.log(`📋 Checklist "${checklist.libelle}" (ID: ${checklist.id}) - IDs de questions:`);
+  loadChecklists(): void {
+    this.loading = true;
+    this.checklistService.getAllCheckLists().subscribe({
+      next: (data: CheckListDto[]) => {
+        console.log('📦 Données brutes reçues du serveur:', data);
         
-        const questionIds: number[] = [];
-        checklist.etapes.forEach(etape => {
-          etape.questions.forEach(question => {
-            questionIds.push(question.id!);
-            console.log(`  Question: "${question.texte.substring(0, 50)}..." → ID: ${question.id}`);
-          });
+        this.checklists = data.map(cl => {
+          const libelleClean = this.cleanChecklistName(cl.libelle);
+          
+          return {
+            id: cl.id,
+            libelle: libelleClean,
+            etapes: (cl.etapes || []).map((e, index) => ({
+              id: e.id,
+              nom: e.nom || `Étape ${index + 1}`,
+              ordre: this.getSafeOrdre(e) ?? index,
+              questions: (e.questions || []).map((q, qIndex) => ({
+                id: q.id,
+                texte: q.texte || 'Question sans texte',
+                type: ['Boolean', 'BooleanNA', 'Texte', 'Liste'].includes(q.type) ? q.type as QuestionFrontend['type'] : 'Boolean',
+                options: (q.options || []).map(o => ({ 
+                  id: o.id, 
+                  valeur: o.valeur || 'Option sans valeur' 
+                })),
+                reponse: q.reponse || '',
+                ordre: this.getSafeQuestionOrdre(q) ?? qIndex,
+                estObligatoire: q.estObligatoire ?? true
+              }))
+            }))
+          };
         });
         
-        this.checklistService.getChecklistSubmissions(checklist.id).subscribe(submissions => {
-          if (submissions && submissions.length > 0) {
-            const submission = submissions[0];
-            console.log(`📄 Première soumission pour "${checklist.libelle}":`);
-            if (submission.reponses && submission.reponses.length > 0) {
-              submission.reponses.forEach(reponse => {
-                console.log(`  Réponse: QuestionID=${reponse.questionId}, Réponse="${reponse.reponse}"`);
-                console.log(`  ❓ Cette questionID existe dans la checklist: ${questionIds.includes(reponse.questionId)}`);
-              });
-              
-              const missingQuestionIds = submission.reponses
-                .map(r => r.questionId)
-                .filter(questionId => !questionIds.includes(questionId));
-              
-              if (missingQuestionIds.length > 0) {
-                console.log(`❌ IDs de questions manquants dans "${checklist.libelle}":`, missingQuestionIds);
-              } else {
-                console.log(`✅ Tous les IDs de questions correspondent pour "${checklist.libelle}"`);
-              }
-            } else {
-              console.log(`⚠️ Aucune réponse dans la soumission pour "${checklist.libelle}"`);
-            }
-          } else {
-            console.log(`❌ Aucune soumission trouvée pour "${checklist.libelle}"`);
-          }
+        this.filteredChecklists = [...this.checklists];
+        this.loading = false;
+        
+        console.log('✅ Checklists chargées et nettoyées:');
+        this.checklists.forEach(cl => {
+          console.log(`📋 Checklist ${cl.id}: "${cl.libelle}" - ${cl.etapes?.length || 0} étapes`);
         });
+      },
+      error: (err: any) => {
+        console.error('❌ Erreur chargement checklists:', err);
+        this.loading = false;
+        alert('Erreur lors du chargement des checklists');
       }
     });
   }
 
-  // Méthode pour debugger les IDs de questions
-  debugQuestionIds(): void {
-    console.log('🔍 Debug des IDs de questions dans les checklists:');
-    this.checklists.forEach(checklist => {
-      console.log(`📋 Checklist "${checklist.libelle}" (ID: ${checklist.id}):`);
-      checklist.etapes.forEach((etape, etapeIndex) => {
-        console.log(`  Étape ${etapeIndex + 1}: "${etape.nom}"`);
-        etape.questions.forEach((question, questionIndex) => {
-          console.log(`    Q${questionIndex + 1}: ID=${question.id}, Texte="${question.texte}"`);
-        });
-      });
-    });
+  private getSafeOrdre(item: any): number | undefined {
+    return 'ordre' in item ? item.ordre : undefined;
   }
 
-  // Méthode pour charger les soumissions pour une checklist spécifique
-  loadSubmissionsForChecklist(checklistId: number): void {
-    this.submissionsLoading = true;
-    
-    console.log(`🔍 Chargement des soumissions pour la checklist ID: ${checklistId}...`);
-    
-    this.checklistService.getChecklistSubmissions(checklistId).subscribe({
-      next: (submissions: FormSubmissionDto[]) => {
-        console.log(`📦 Soumissions brutes reçues pour checklist ${checklistId}:`, submissions);
-        
-        if (submissions && submissions.length > 0) {
-          submissions.forEach((sub, index) => {
-            console.log(`📄 Soumission ${index + 1}:`, {
-              id: sub.id,
-              checkListId: sub.checkListId,
-              reponsesCount: sub.reponses?.length || 0,
-              reponses: sub.reponses
-            });
-            
-            const submissionWithDetails: SubmissionWithDetails = {
-              ...sub,
-              expanded: false,
-              checklistName: this.getChecklistName(sub.checkListId),
-              showDetails: false
-            };
-            
-            this.submissions.push(submissionWithDetails);
+  private getSafeQuestionOrdre(question: any): number | undefined {
+    if ('ordre' in question) return question.ordre;
+    if ('order' in question) return question.order;
+    if ('position' in question) return question.position;
+    return undefined;
+  }
+
+  // === MÉTHODES DE SAUVEGARDE CORRIGÉES ===
+
+  saveChecklist(checklist: CheckListFrontend) {
+    console.log('🔄 Début sauvegarde checklist:', {
+      id: checklist.id,
+      libelle: checklist.libelle,
+      nbEtapes: checklist.etapes?.length,
+      nbQuestions: this.getTotalQuestions(checklist),
+      detailsEtapes: checklist.etapes?.map(etape => ({
+        nom: etape.nom,
+        nbQuestions: etape.questions?.length,
+        questions: etape.questions?.map(q => ({ 
+          id: q.id, 
+          texte: q.texte.substring(0, 50) + '...', 
+          type: q.type,
+          nbOptions: q.options?.length 
+        }))
+      }))
+    });
+
+    // 🔥 CORRECTION : Adapter le payload au format serveur
+    const createPayload: any = {
+      libelle: checklist.libelle,
+      version: "1.0", // 🔥 VALEUR PAR DÉFAUT
+      description: checklist.libelle, // 🔥 Utiliser libelle comme description
+      etapes: (checklist.etapes || []).map((etape, etapeIndex) => ({
+        id: etape.id, // 🔥 INCLURE L'ID DE L'ÉTAPE
+        nom: etape.nom,
+        ordre: etape.ordre ?? etapeIndex,
+        questions: (etape.questions || []).map((question, questionIndex) => {
+          
+          // 🔥 CORRECTION : Adapter les options au format serveur
+          const options: any[] = (question.options || []).map((option) => ({
+            id: option.id, // 🔥 INCLURE L'ID DE L'OPTION
+            valeur: option.valeur // 🔥 "valeur" au lieu de "texte"
+          }));
+
+          // 🔥 CORRECTION : Adapter la question au format serveur
+          const questionPayload = {
+            id: question.id, // 🔥 INCLURE L'ID DE LA QUESTION
+            texte: question.texte, // 🔥 "texte" au lieu de "libelle"
+            type: question.type,
+            ordre: question.ordre ?? questionIndex,
+            estObligatoire: question.estObligatoire ?? true, // 🔥 Valeur par défaut
+            options: options
+            // 🔥 SUPPRIMER : reponse qui n'est pas dans le schéma
+          };
+
+          console.log('📝 Question payload corrigé:', questionPayload);
+          return questionPayload;
+        })
+      }))
+    };
+
+    console.log('📤 Payload CORRIGÉ envoyé au serveur:', JSON.stringify(createPayload, null, 2));
+
+    if (checklist.id && checklist.id > 0) {
+      this.checklistService.updateCheckList(checklist.id, createPayload).subscribe({
+        next: (res: CheckListDto) => {
+          console.log('✅ Réponse serveur après mise à jour:', res);
+          this.updateLocalChecklistAfterSave(res, checklist);
+          alert('Checklist mise à jour avec succès !');
+        },
+        error: (err) => {
+          console.error('❌ Erreur détaillée lors de la mise à jour:', {
+            status: err.status,
+            statusText: err.statusText,
+            url: err.url,
+            message: err.message,
+            error: err.error
           });
-        } else {
-          console.log(`❌ Aucune soumission trouvée pour la checklist ${checklistId}`);
+          
+          // 🔥 ESSAYER UNE VERSION SIMPLIFIÉE SI LA PREMIÈRE ÉCHOUÉ
+          this.trySimplifiedUpdate(checklist);
         }
-        
-        this.submissions.sort((a, b) => 
-          new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
-        );
-        
-        this.submissionsLoading = false;
-        this.activeTab = 'history';
-        
-        console.log(`🎯 ${this.submissions.length} soumissions chargées pour la checklist ${checklistId}`);
+      });
+    } else {
+      this.checklistService.createCheckList(createPayload).subscribe({
+        next: (res: CheckListDto) => {
+          console.log('Checklist créée avec succès', res);
+          this.loadChecklists();
+          alert('Checklist créée avec succès !');
+        },
+        error: (err) => {
+          console.error('Erreur lors de la création:', err);
+          alert('Erreur lors de la création de la checklist');
+        }
+      });
+    }
+  }
+
+  private trySimplifiedUpdate(checklist: CheckListFrontend): void {
+    console.log('🔄 Tentative avec payload simplifié CORRIGÉ...');
+    
+    const simplifiedPayload: any = {
+      libelle: checklist.libelle,
+      version: "1.0",
+      description: checklist.libelle,
+      etapes: (checklist.etapes || []).map((etape, etapeIndex) => ({
+        nom: etape.nom,
+        ordre: etape.ordre ?? etapeIndex,
+        questions: (etape.questions || []).map((question, questionIndex) => ({
+          texte: question.texte,
+          type: question.type,
+          ordre: question.ordre ?? questionIndex,
+          estObligatoire: question.estObligatoire ?? true,
+          options: (question.options || []).map((option) => ({
+            valeur: option.valeur
+          }))
+        }))
+      }))
+    };
+
+    console.log('📤 Payload simplifié CORRIGÉ:', JSON.stringify(simplifiedPayload, null, 2));
+
+    this.checklistService.updateCheckList(checklist.id!, simplifiedPayload).subscribe({
+      next: (res: CheckListDto) => {
+        console.log('✅ SUCCÈS avec payload simplifié corrigé:', res);
+        this.updateLocalChecklistAfterSave(res, checklist);
+        alert('Checklist mise à jour avec succès !');
       },
       error: (err) => {
-        console.error(`❌ Erreur chargement soumissions pour checklist ${checklistId}:`, err);
-        this.submissionsLoading = false;
-        alert('Erreur lors du chargement des soumissions');
+        console.error('❌ Échec même avec payload simplifié corrigé:', err);
+        
+        // 🔥 DERNIÈRE TENTATIVE : Tester la création
+        this.testCreateWithCorrectedPayload(checklist);
       }
     });
   }
 
-  // === MÉTHODES MANQUANTES POUR LE TEMPLATE ===
+  private testCreateWithCorrectedPayload(checklist: CheckListFrontend): void {
+    console.log('🧪 Test création avec payload corrigé...');
+    
+    const testPayload: any = {
+      libelle: checklist.libelle + ' - TEST',
+      version: "1.0",
+      description: checklist.libelle + ' - Description test',
+      etapes: [
+        {
+          nom: 'Étape test',
+          ordre: 0,
+          questions: [
+            {
+              texte: 'Question test 1 - Fonctionne ?',
+              type: 'Boolean',
+              ordre: 0,
+              estObligatoire: true,
+              options: []
+            }
+          ]
+        }
+      ]
+    };
+
+    this.checklistService.createCheckList(testPayload).subscribe({
+      next: (res) => {
+        console.log('✅ TEST RÉUSSI: Création avec payload corrigé:', res);
+        alert('Test réussi! Le format corrigé fonctionne.');
+        this.loadChecklists();
+      },
+      error: (err) => {
+        console.error('❌ TEST ÉCHOUÉ: Même avec format corrigé:', err);
+        
+        // Afficher l'erreur complète pour debug
+        console.log('🔍 Erreur complète:', {
+          status: err.status,
+          statusText: err.statusText, 
+          error: err.error,
+          message: err.message
+        });
+        
+        alert('Le problème persiste. Vérifiez la console pour les détails.');
+      }
+    });
+  }
+
+  private updateLocalChecklistAfterSave(serverChecklist: CheckListDto, localChecklist: CheckListFrontend): void {
+    const index = this.checklists.findIndex(cl => cl.id === serverChecklist.id);
+    
+    if (index !== -1) {
+      const updatedChecklist: CheckListFrontend = {
+        id: serverChecklist.id,
+        libelle: this.cleanChecklistName(serverChecklist.libelle),
+        etapes: (serverChecklist.etapes || []).map((serverEtape, etapeIndex) => {
+          const localEtape = localChecklist.etapes?.find(e => 
+            e.nom === serverEtape.nom || e.ordre === etapeIndex
+          );
+          
+          return {
+            id: serverEtape.id,
+            nom: serverEtape.nom || `Étape ${etapeIndex + 1}`,
+            ordre: this.getSafeOrdre(serverEtape) ?? etapeIndex,
+            questions: (serverEtape.questions || []).map((serverQuestion, qIndex) => {
+              const localQuestion = localEtape?.questions?.find(q => 
+                q.texte === serverQuestion.texte || q.ordre === qIndex
+              );
+              
+              return {
+                id: serverQuestion.id,
+                texte: serverQuestion.texte || 'Question sans texte',
+                type: ['Boolean', 'BooleanNA', 'Texte', 'Liste'].includes(serverQuestion.type) 
+                  ? serverQuestion.type as QuestionFrontend['type'] 
+                  : 'Boolean',
+                options: (serverQuestion.options || []).map(o => ({ 
+                  id: o.id, 
+                  valeur: o.valeur || 'Option sans valeur' 
+                })),
+                reponse: localQuestion?.reponse || serverQuestion.reponse || '',
+                ordre: this.getSafeQuestionOrdre(serverQuestion) ?? qIndex,
+                estObligatoire: serverQuestion.estObligatoire ?? true
+              };
+            })
+          };
+        })
+      };
+
+      this.checklists[index] = updatedChecklist;
+      this.filteredChecklists = [...this.checklists];
+      
+      console.log('✅ Checklist mise à jour localement sans perte de données:', {
+        libelle: updatedChecklist.libelle,
+        etapes: updatedChecklist.etapes?.length,
+        questions: this.getTotalQuestions(updatedChecklist),
+        status: 'MISE À JOUR RÉUSSIE'
+      });
+    } else {
+      console.warn('❌ Checklist non trouvée localement, rechargement complet...');
+      this.loadChecklists();
+    }
+  }
+
+  // === MÉTHODES UTILITAIRES ===
+
+  cleanChecklistName(name: string): string {
+    if (!name) return 'Checklist sans nom';
+    
+    let cleanedName = name.trim();
+    
+    const duplicatePattern = /^(CHECK-LIST « )+/;
+    if (duplicatePattern.test(cleanedName)) {
+      cleanedName = cleanedName.replace(duplicatePattern, 'CHECK-LIST « ');
+    }
+    
+    if (cleanedName.includes('«') && !cleanedName.includes('»')) {
+      cleanedName += '»';
+    }
+    
+    return cleanedName;
+  }
+
+  getTotalQuestions(checklist: CheckListFrontend): number {
+    return (checklist.etapes || []).reduce((total, etape) => total + (etape.questions || []).length, 0);
+  }
+
+  getTotalEtapes(checklist: CheckListFrontend): number {
+    return (checklist.etapes || []).length;
+  }
+
+  // === MÉTHODES D'INTERFACE ===
+
+  filterChecklists(): void {
+    if (!this.searchTerm.trim()) {
+      this.filteredChecklists = [...this.checklists];
+      return;
+    }
+
+    const searchLower = this.searchTerm.toLowerCase().trim();
+    
+    this.filteredChecklists = this.checklists.filter(checklist => 
+      checklist.libelle.toLowerCase().includes(searchLower) ||
+      (checklist.etapes || []).some(etape => 
+        etape.nom.toLowerCase().includes(searchLower) ||
+        (etape.questions || []).some(question => 
+          question.texte.toLowerCase().includes(searchLower)
+        )
+      )
+    );
+  }
+
+  clearSearch(): void {
+    this.searchTerm = '';
+    this.filteredChecklists = [...this.checklists];
+  }
+
+  viewChecklistDetail(checklistId: number): void {
+    this.router.navigate(['/checklists', checklistId]);
+  }
+
+  editChecklist(checklistId: number): void {
+    this.router.navigate(['/checklists', checklistId, 'edit']);
+  }
+
+  createNewChecklist(): void {
+    this.router.navigate(['/checklists/new']);
+  }
+
+  // === GESTION DES ÉTAPES ET QUESTIONS ===
+
+  addEtape(checklist: CheckListFrontend) {
+    if (!checklist.etapes) checklist.etapes = [];
+    const newOrdre = checklist.etapes.length;
+    checklist.etapes.push({
+      id: undefined,
+      nom: 'Nouvelle étape',
+      questions: [],
+      ordre: newOrdre
+    });
+  }
+
+  removeEtape(checklist: CheckListFrontend, index: number) {
+    if (checklist.etapes && checklist.etapes.length > 0) {
+      if (confirm('Voulez-vous vraiment supprimer cette étape ?')) {
+        checklist.etapes.splice(index, 1);
+        checklist.etapes.forEach((etape, idx) => {
+          etape.ordre = idx;
+        });
+      }
+    }
+  }
+
+  updateEtapeNom(etape: EtapeFrontend, value: string) {
+    etape.nom = value;
+  }
+
+  addQuestion(etape: EtapeFrontend) {
+    if (!etape.questions) etape.questions = [];
+    const newOrdre = etape.questions.length;
+    etape.questions.push({
+      id: undefined,
+      texte: 'Nouvelle question',
+      type: 'Boolean',
+      options: [],
+      reponse: '',
+      ordre: newOrdre,
+      estObligatoire: true
+    });
+  }
+
+  removeQuestion(etape: EtapeFrontend, index: number) {
+    if (etape.questions && etape.questions.length > 0) {
+      if (confirm('Voulez-vous vraiment supprimer cette question ?')) {
+        etape.questions.splice(index, 1);
+        etape.questions.forEach((question, idx) => {
+          question.ordre = idx;
+        });
+      }
+    }
+  }
+
+  updateQuestionTexte(question: QuestionFrontend, value: string) {
+    question.texte = value;
+  }
+
+  updateQuestionType(question: QuestionFrontend, value: string) {
+    const oldType = question.type;
+    question.type = value as QuestionFrontend['type'];
+    
+    if (oldType !== value) {
+      if (value === 'Liste') {
+        if (!question.options || question.options.length === 0) {
+          question.options = [{ valeur: 'Option 1' }];
+        }
+      } else {
+        question.options = [];
+      }
+      
+      question.reponse = '';
+    }
+  }
+
+  addOption(question: QuestionFrontend) {
+    if (!question.options) question.options = [];
+    const newIndex = question.options.length + 1;
+    question.options.push({ valeur: `Option ${newIndex}` });
+  }
+
+  removeOption(question: QuestionFrontend, index: number) {
+    if (question.options && question.options.length > 1) {
+      question.options.splice(index, 1);
+    } else {
+      alert('Une question de type liste doit avoir au moins une option');
+    }
+  }
+
+  getBooleanOptions(q: QuestionFrontend): string[] {
+    return q.type === 'BooleanNA' ? ['Oui', 'Non', 'N/A'] : ['Oui', 'Non'];
+  }
+
+  deleteChecklist(checklist: CheckListFrontend) {
+    if (!checklist.id) return;
+    if (!confirm(`Voulez-vous vraiment supprimer la checklist "${checklist.libelle}" ?`)) return;
+
+    this.checklistService.deleteCheckList(checklist.id).subscribe({
+      next: () => {
+        this.checklists = this.checklists.filter(cl => cl.id !== checklist.id);
+        this.filteredChecklists = this.filteredChecklists.filter(cl => cl.id !== checklist.id);
+        console.log(`Checklist "${checklist.libelle}" supprimée.`);
+      },
+      error: (err) => {
+        console.error('Erreur lors de la suppression :', err);
+        alert('Erreur lors de la suppression de la checklist');
+      }
+    });
+  }
+
+  // === MÉTHODES POUR LE STYLE ===
 
   isAvantIntervention(nomEtape: string): boolean {
     return nomEtape.toLowerCase().includes('avant') || 
@@ -248,109 +603,98 @@ export class ChecklistListComponent implements OnInit {
     }
   }
 
-  // === MÉTHODES EXISTANTES AMÉLIORÉES ===
+  // === MÉTHODES DE DIAGNOSTIC ===
 
-  cleanChecklistName(name: string): string {
-    if (!name) return 'Checklist sans nom';
+  diagnoseSubmissionProblem(): void {
+    console.log('🩺 Diagnostic du problème de soumissions pour TOUTES les checklists...');
     
-    let cleanedName = name.trim();
-    
-    const duplicatePattern = /^(CHECK-LIST « )+/;
-    if (duplicatePattern.test(cleanedName)) {
-      cleanedName = cleanedName.replace(duplicatePattern, 'CHECK-LIST « ');
-      console.log(`🔄 Nom nettoyé: "${name}" → "${cleanedName}"`);
-    }
-    
-    if (cleanedName.includes('«') && !cleanedName.includes('»')) {
-      cleanedName += '»';
-    }
-    
-    return cleanedName;
-  }
-
-  inspectProblematicChecklist(): void {
-    const problematicChecklist = this.checklists.find(cl => 
-      cl.libelle.includes('SÉCURITÉ DU PATIENT AU BLOC OPÉRATOIRE') || 
-      cl.libelle.includes('SÉCURITÉ')
-    );
-    
-    if (problematicChecklist) {
-      console.log('🔍 Inspection de la checklist problématique:', problematicChecklist);
-      
-      this.checklistService.getChecklistSubmissions(problematicChecklist.id!).subscribe({
-        next: (submissions) => {
-          console.log(`📊 Soumissions pour "${problematicChecklist.libelle}":`, submissions);
-          
+    this.checklists.forEach(checklist => {
+      if (checklist.id) {
+        console.log(`📋 Checklist "${checklist.libelle}" (ID: ${checklist.id}) - IDs de questions:`);
+        
+        const questionIds: number[] = [];
+        checklist.etapes.forEach(etape => {
+          etape.questions.forEach(question => {
+            questionIds.push(question.id!);
+            console.log(`  Question: "${question.texte.substring(0, 50)}..." → ID: ${question.id}`);
+          });
+        });
+        
+        this.checklistService.getChecklistSubmissions(checklist.id).subscribe(submissions => {
           if (submissions && submissions.length > 0) {
-            submissions.forEach((sub, index) => {
-              console.log(`Soumission ${index + 1}:`, {
-                id: sub.id,
-                checkListId: sub.checkListId,
-                reponsesCount: sub.reponses?.length || 0,
-                submittedAt: sub.submittedAt,
-                reponses: sub.reponses
+            const submission = submissions[0];
+            console.log(`📄 Première soumission pour "${checklist.libelle}":`);
+            if (submission.reponses && submission.reponses.length > 0) {
+              submission.reponses.forEach(reponse => {
+                console.log(`  Réponse: QuestionID=${reponse.questionId}, Réponse="${reponse.reponse}"`);
+                console.log(`  ❓ Cette questionID existe dans la checklist: ${questionIds.includes(reponse.questionId)}`);
               });
-            });
+              
+              const missingQuestionIds = submission.reponses
+                .map(r => r.questionId)
+                .filter(questionId => !questionIds.includes(questionId));
+              
+              if (missingQuestionIds.length > 0) {
+                console.log(`❌ IDs de questions manquants dans "${checklist.libelle}":`, missingQuestionIds);
+              } else {
+                console.log(`✅ Tous les IDs de questions correspondent pour "${checklist.libelle}"`);
+              }
+            } else {
+              console.log(`⚠️ Aucune réponse dans la soumission pour "${checklist.libelle}"`);
+            }
           } else {
-            console.log('❌ Aucune soumission trouvée pour cette checklist');
+            console.log(`❌ Aucune soumission trouvée pour "${checklist.libelle}"`);
           }
-        },
-        error: (err) => {
-          console.error('❌ Erreur chargement soumissions spécifiques:', err);
-        }
+        });
+      }
+    });
+  }
+
+  debugQuestionIds(): void {
+    console.log('🔍 Debug des IDs de questions dans les checklists:');
+    this.checklists.forEach(checklist => {
+      console.log(`📋 Checklist "${checklist.libelle}" (ID: ${checklist.id}):`);
+      checklist.etapes.forEach((etape, etapeIndex) => {
+        console.log(`  Étape ${etapeIndex + 1}: "${etape.nom}"`);
+        etape.questions.forEach((question, questionIndex) => {
+          console.log(`    Q${questionIndex + 1}: ID=${question.id}, Texte="${question.texte}"`);
+        });
       });
-    } else {
-      console.log('❌ Checklist problématique non trouvée');
-    }
+    });
   }
 
-  forceCleanAndReload(): void {
-    console.log('🔄 Forcer nettoyage et rechargement...');
-    
-    this.checklists = [];
-    this.submissions = [];
-    this.loading = true;
-    this.submissionsLoading = true;
-    
-    this.loadChecklists();
-    
-    setTimeout(() => {
-      this.loadAllSubmissions();
-    }, 1000);
+  debugChecklistState(): void {
+    console.log('🔍 État actuel des checklists:');
+    this.checklists.forEach((cl, index) => {
+      console.log(`${index + 1}. "${cl.libelle}" (ID: ${cl.id})`, {
+        etapes: cl.etapes?.length,
+        questions: this.getTotalQuestions(cl),
+        details: cl.etapes?.map(etape => ({
+          nom: etape.nom,
+          questions: etape.questions?.map(q => ({ id: q.id, texte: q.texte.substring(0, 30) + '...' }))
+        }))
+      });
+    });
   }
 
-  getSubmissionCountForChecklist(checklistId: number): number {
-    if (!checklistId) return 0;
-    const count = this.submissions.filter(s => s.checkListId === checklistId).length;
-    console.log(`📊 Checklist ${checklistId}: ${count} soumissions`);
-    return count;
-  }
-
-  // === MÉTHODES POUR L'HISTORIQUE - VERSION CORRIGÉE ===
+  // === MÉTHODES HISTORIQUE ===
 
   loadAllSubmissions(): void {
     this.submissionsLoading = true;
     this.submissions = [];
     
     console.log('🔍 Début du chargement des soumissions...');
-
-    this.diagnoseEmptySubmissions();
-    
-    // Charger les soumissions pour toutes les checklists
     this.loadSubmissionsForAllChecklists();
   }
 
-  // NOUVELLE MÉTHODE : Charger les soumissions pour toutes les checklists
   loadSubmissionsForAllChecklists(): void {
     this.submissionsLoading = true;
     this.submissions = [];
     
     console.log('🔍 Chargement des soumissions pour toutes les checklists...');
     
-    // Tableau pour stocker toutes les promesses de chargement
     const loadPromises: Promise<void>[] = [];
     
-    // Pour chaque checklist, charger ses soumissions
     this.checklists.forEach(checklist => {
       if (checklist.id) {
         const promise = new Promise<void>((resolve) => {
@@ -361,7 +705,7 @@ export class ChecklistListComponent implements OnInit {
                   const submissionWithDetails: SubmissionWithDetails = {
                     ...sub,
                     expanded: false,
-                    checklistName: checklist.libelle, // Utiliser le nom de la checklist actuelle
+                    checklistName: checklist.libelle,
                     showDetails: false
                   };
                   this.submissions.push(submissionWithDetails);
@@ -382,17 +726,62 @@ export class ChecklistListComponent implements OnInit {
       }
     });
     
-    // Attendre que toutes les soumissions soient chargées
     Promise.all(loadPromises).then(() => {
-      // Trier toutes les soumissions par date
       this.submissions.sort((a, b) => 
         new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
       );
-      
       this.submissionsLoading = false;
       this.activeTab = 'history';
       
       console.log(`🎯 ${this.submissions.length} soumissions chargées au total pour ${this.checklists.length} checklists`);
+    });
+  }
+
+  loadSubmissionsForChecklist(checklistId: number): void {
+    this.submissionsLoading = true;
+    
+    console.log(`🔍 Chargement des soumissions pour la checklist ID: ${checklistId}...`);
+    
+    this.checklistService.getChecklistSubmissions(checklistId).subscribe({
+      next: (submissions: FormSubmissionDto[]) => {
+        console.log(`📦 Soumissions brutes reçues pour checklist ${checklistId}:`, submissions);
+        
+        if (submissions && submissions.length > 0) {
+          submissions.forEach((sub, index) => {
+            console.log(`📄 Soumission ${index + 1}:`, {
+              id: sub.id,
+              checkListId: sub.checkListId,
+              reponsesCount: sub.reponses?.length || 0,
+              reponses: sub.reponses
+            });
+            
+            const submissionWithDetails: SubmissionWithDetails = {
+              ...sub,
+              expanded: false,
+              checklistName: this.getChecklistName(sub.checkListId),
+              showDetails: false
+            };
+            
+            this.submissions.push(submissionWithDetails);
+          });
+        } else {
+          console.log(`❌ Aucune soumission trouvée pour la checklist ${checklistId}`);
+        }
+        
+        this.submissions.sort((a, b) => 
+          new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
+        );
+        
+        this.submissionsLoading = false;
+        this.activeTab = 'history';
+        
+        console.log(`🎯 ${this.submissions.length} soumissions chargées pour la checklist ${checklistId}`);
+      },
+      error: (err) => {
+        console.error(`❌ Erreur chargement soumissions pour checklist ${checklistId}:`, err);
+        this.submissionsLoading = false;
+        alert('Erreur lors du chargement des soumissions');
+      }
     });
   }
 
@@ -402,58 +791,7 @@ export class ChecklistListComponent implements OnInit {
     this.loadAllSubmissions();
   }
 
-  // === MÉTHODES EXISTANTES (conservées) ===
-
-  loadChecklists(): void {
-    this.loading = true;
-    this.checklistService.getAllCheckLists().subscribe({
-      next: (data: CheckListDto[]) => {
-        console.log('📦 Données brutes reçues du serveur:', data);
-        
-        this.checklists = data.map(cl => {
-          const libelleClean = this.cleanChecklistName(cl.libelle);
-          
-          return {
-            id: cl.id,
-            libelle: libelleClean,
-            etapes: (cl.etapes || []).map((e, index) => ({
-              id: e.id,
-              nom: e.nom || `Étape ${index + 1}`,
-              ordre: this.getSafeOrdre(e) ?? index,
-              questions: (e.questions || []).map((q, qIndex) => ({
-                id: q.id,
-                texte: q.texte || 'Question sans texte',
-                type: ['Boolean', 'BooleanNA', 'Texte', 'Liste'].includes(q.type) ? q.type as QuestionFrontend['type'] : 'Boolean',
-                options: (q.options || []).map(o => ({ 
-                  id: o.id, 
-                  valeur: o.valeur || 'Option sans valeur' 
-                })),
-                reponse: q.reponse || '',
-                ordre: this.getSafeOrdre(q) ?? qIndex
-              }))
-            }))
-          };
-        });
-        
-        this.filteredChecklists = [...this.checklists];
-        this.loading = false;
-        
-        console.log('✅ Checklists chargées et nettoyées:');
-        this.checklists.forEach(cl => {
-          console.log(`📋 Checklist ${cl.id}: "${cl.libelle}" - ${cl.etapes?.length || 0} étapes`);
-        });
-      },
-      error: (err: any) => {
-        console.error('❌ Erreur chargement checklists:', err);
-        this.loading = false;
-        alert('Erreur lors du chargement des checklists');
-      }
-    });
-  }
-
-  private getSafeOrdre(item: any): number | undefined {
-    return 'ordre' in item ? item.ordre : undefined;
-  }
+  // === MÉTHODES POUR LES SOUMISSIONS ===
 
   showSubmissionDetails(submission: SubmissionWithDetails): void {
     this.selectedSubmission = submission;
@@ -565,7 +903,7 @@ export class ChecklistListComponent implements OnInit {
     return 'answer-text';
   }
 
-  // === MÉTHODES D'IMPRESSION PDF COMPLÈTES ===
+  // === MÉTHODES D'IMPRESSION ===
 
   printSubmission(submission: SubmissionWithDetails): void {
     const printWindow = window.open('', '_blank');
@@ -886,12 +1224,11 @@ export class ChecklistListComponent implements OnInit {
     printWindow.document.close();
   }
 
-  // === MÉTHODES MANQUANTES AJOUTÉES ===
+  // === AUTRES MÉTHODES ===
 
   diagnoseEmptySubmissions(): void {
     console.log('🩺 Diagnostic des soumissions vides...');
     
-    // Diagnostiquer pour toutes les checklists
     this.checklists.forEach(checklist => {
       if (checklist.id) {
         this.checklistService.getChecklistSubmissions(checklist.id).subscribe({
@@ -937,7 +1274,6 @@ export class ChecklistListComponent implements OnInit {
     
     const testSubmissions: SubmissionWithDetails[] = [];
     
-    // Créer des soumissions de test pour chaque checklist
     this.checklists.forEach((checklist, index) => {
       if (checklist.id) {
         testSubmissions.push({
@@ -1077,208 +1413,61 @@ export class ChecklistListComponent implements OnInit {
     }
   }
 
-  // === AUTRES MÉTHODES EXISTANTES ===
+  getSubmissionCountForChecklist(checklistId: number): number {
+    if (!checklistId) return 0;
+    const count = this.submissions.filter(s => s.checkListId === checklistId).length;
+    console.log(`📊 Checklist ${checklistId}: ${count} soumissions`);
+    return count;
+  }
 
-  filterChecklists(): void {
-    if (!this.searchTerm.trim()) {
-      this.filteredChecklists = [...this.checklists];
-      return;
-    }
-
-    const searchLower = this.searchTerm.toLowerCase().trim();
+  forceCleanAndReload(): void {
+    console.log('🔄 Forcer nettoyage et rechargement...');
     
-    this.filteredChecklists = this.checklists.filter(checklist => 
-      checklist.libelle.toLowerCase().includes(searchLower) ||
-      (checklist.etapes || []).some(etape => 
-        etape.nom.toLowerCase().includes(searchLower) ||
-        (etape.questions || []).some(question => 
-          question.texte.toLowerCase().includes(searchLower)
-        )
-      )
+    this.checklists = [];
+    this.submissions = [];
+    this.loading = true;
+    this.submissionsLoading = true;
+    
+    this.loadChecklists();
+    
+    setTimeout(() => {
+      this.loadAllSubmissions();
+    }, 1000);
+  }
+
+  inspectProblematicChecklist(): void {
+    const problematicChecklist = this.checklists.find(cl => 
+      cl.libelle.includes('SÉCURITÉ DU PATIENT AU BLOC OPÉRATOIRE') || 
+      cl.libelle.includes('SÉCURITÉ')
     );
-  }
-
-  clearSearch(): void {
-    this.searchTerm = '';
-    this.filteredChecklists = [...this.checklists];
-  }
-
-  getTotalQuestions(checklist: CheckListFrontend): number {
-    return (checklist.etapes || []).reduce((total, etape) => total + (etape.questions || []).length, 0);
-  }
-
-  getTotalEtapes(checklist: CheckListFrontend): number {
-    return (checklist.etapes || []).length;
-  }
-
-  viewChecklistDetail(checklistId: number): void {
-    this.router.navigate(['/checklists', checklistId]);
-  }
-
-  editChecklist(checklistId: number): void {
-    this.router.navigate(['/checklists', checklistId, 'edit']);
-  }
-
-  addEtape(checklist: CheckListFrontend) {
-    if (!checklist.etapes) checklist.etapes = [];
-    const newOrdre = checklist.etapes.length;
-    checklist.etapes.push({
-      id: 0,
-      nom: '',
-      questions: [],
-      ordre: newOrdre
-    });
-  }
-
-  removeEtape(checklist: CheckListFrontend, index: number) {
-    if (checklist.etapes) {
-      checklist.etapes.splice(index, 1);
-      checklist.etapes.forEach((etape, idx) => {
-        etape.ordre = idx;
-      });
-    }
-  }
-
-  updateEtapeNom(etape: EtapeFrontend, value: string) {
-    etape.nom = value;
-  }
-
-  addQuestion(etape: EtapeFrontend) {
-    if (!etape.questions) etape.questions = [];
-    const newOrdre = etape.questions.length;
-    etape.questions.push({
-      id: 0,
-      texte: '',
-      type: 'Boolean',
-      options: [],
-      reponse: '',
-      ordre: newOrdre
-    });
-  }
-
-  removeQuestion(etape: EtapeFrontend, index: number) {
-    if (etape.questions) {
-      etape.questions.splice(index, 1);
-      etape.questions.forEach((question, idx) => {
-        question.ordre = idx;
-      });
-    }
-  }
-
-  updateQuestionTexte(question: QuestionFrontend, value: string) {
-    question.texte = value;
-  }
-
-  updateQuestionType(question: QuestionFrontend, value: string) {
-    question.type = value as QuestionFrontend['type'];
-    if (value !== 'Liste') question.options = [];
-    if (!question.reponse) question.reponse = '';
-  }
-
-  addOption(question: QuestionFrontend) {
-    if (!question.options) question.options = [];
-    question.options.push({ valeur: '' });
-  }
-
-  removeOption(question: QuestionFrontend, index: number) {
-    if (question.options) {
-      question.options.splice(index, 1);
-    }
-  }
-
-  getBooleanOptions(q: QuestionFrontend): string[] {
-    return q.type === 'BooleanNA' ? ['Oui', 'Non', 'N/A'] : ['Oui', 'Non'];
-  }
-
-  saveChecklist(checklist: CheckListFrontend) {
-    const createPayload: CreateCheckListDto = {
-      libelle: checklist.libelle,
-      etapes: (checklist.etapes || []).map((etape, etapeIndex) => ({
-        nom: etape.nom,
-        ordre: etape.ordre ?? etapeIndex,
-        questions: (etape.questions || []).map((question, questionIndex) => {
-          const options: CreateResponseOptionDto[] = (question.options || []).map((option, optionIndex) => ({
-            texte: option.valeur,
-            valeur: option.valeur,
-            ordre: optionIndex
-          }));
-
-          return {
-            libelle: question.texte,
-            type: question.type,
-            ordre: question.ordre ?? questionIndex,
-            options: options,
-            reponse: question.reponse || undefined
-          };
-        })
-      }))
-    };
-
-    if (checklist.id && checklist.id > 0) {
-      this.checklistService.updateCheckList(checklist.id, createPayload).subscribe({
-        next: (res: CheckListDto) => {
-          console.log('Checklist mise à jour avec succès', res);
-          const index = this.checklists.findIndex(cl => cl.id === checklist.id);
-          if (index !== -1) {
-            this.checklists[index] = {
-              ...this.checklists[index],
-              libelle: res.libelle,
-              etapes: (res.etapes || []).map((e, etapeIndex) => ({
-                id: e.id,
-                nom: e.nom,
-                ordre: this.getSafeOrdre(e) ?? etapeIndex,
-                questions: (e.questions || []).map((q, questionIndex) => ({
-                  id: q.id,
-                  texte: q.texte,
-                  type: q.type as QuestionFrontend['type'],
-                  options: (q.options || []).map(o => ({ id: o.id, valeur: o.valeur })),
-                  reponse: '',
-                  ordre: this.getSafeOrdre(q) ?? questionIndex
-                }))
-              }))
-            };
-            this.filteredChecklists = [...this.checklists];
+    
+    if (problematicChecklist) {
+      console.log('🔍 Inspection de la checklist problématique:', problematicChecklist);
+      
+      this.checklistService.getChecklistSubmissions(problematicChecklist.id!).subscribe({
+        next: (submissions) => {
+          console.log(`📊 Soumissions pour "${problematicChecklist.libelle}":`, submissions);
+          
+          if (submissions && submissions.length > 0) {
+            submissions.forEach((sub, index) => {
+              console.log(`Soumission ${index + 1}:`, {
+                id: sub.id,
+                checkListId: sub.checkListId,
+                reponsesCount: sub.reponses?.length || 0,
+                submittedAt: sub.submittedAt,
+                reponses: sub.reponses
+              });
+            });
+          } else {
+            console.log('❌ Aucune soumission trouvée pour cette checklist');
           }
-          alert('Checklist mise à jour avec succès !');
         },
         error: (err) => {
-          console.error('Erreur lors de la mise à jour:', err);
-          alert('Erreur lors de la mise à jour de la checklist');
+          console.error('❌ Erreur chargement soumissions spécifiques:', err);
         }
       });
     } else {
-      this.checklistService.createCheckList(createPayload).subscribe({
-        next: (res: CheckListDto) => {
-          console.log('Checklist créée avec succès', res);
-          this.loadChecklists();
-          alert('Checklist créée avec succès !');
-        },
-        error: (err) => {
-          console.error('Erreur lors de la création:', err);
-          alert('Erreur lors de la création de la checklist');
-        }
-      });
+      console.log('❌ Checklist problématique non trouvée');
     }
-  }
-
-  deleteChecklist(checklist: CheckListFrontend) {
-    if (!checklist.id) return;
-    if (!confirm(`Voulez-vous vraiment supprimer la checklist "${checklist.libelle}" ?`)) return;
-
-    this.checklistService.deleteCheckList(checklist.id).subscribe({
-      next: () => {
-        this.checklists = this.checklists.filter(cl => cl.id !== checklist.id);
-        this.filteredChecklists = this.filteredChecklists.filter(cl => cl.id !== checklist.id);
-        console.log(`Checklist "${checklist.libelle}" supprimée.`);
-      },
-      error: (err) => {
-        console.error('Erreur lors de la suppression :', err);
-        alert('Erreur lors de la suppression de la checklist');
-      }
-    });
-  }
-
-  createNewChecklist(): void {
-    this.router.navigate(['/checklists/new']);
   }
 }
