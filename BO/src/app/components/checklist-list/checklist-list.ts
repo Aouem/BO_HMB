@@ -63,6 +63,12 @@ export class ChecklistListComponent implements OnInit {
   selectedDate: string = '';
   selectedChecklistForPrint: number | null = null;
 
+  // === PAGINATION ===
+  currentPage: number = 1;
+  pageSize: number = 10;
+  totalPages: number = 1;
+  paginatedSubmissions: SubmissionWithDetails[] = [];
+
   constructor(
     private checklistService: CheckListService,
     private router: Router
@@ -70,6 +76,63 @@ export class ChecklistListComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadChecklists();
+  }
+
+  // === MÉTHODES DE PAGINATION ===
+
+  updatePagination(): void {
+    this.totalPages = Math.ceil(this.submissions.length / this.pageSize);
+    this.currentPage = Math.min(this.currentPage, this.totalPages);
+    
+    const startIndex = (this.currentPage - 1) * this.pageSize;
+    const endIndex = startIndex + this.pageSize;
+    this.paginatedSubmissions = this.submissions.slice(startIndex, endIndex);
+    
+    console.log(`📄 Pagination: Page ${this.currentPage}/${this.totalPages}, ${this.paginatedSubmissions.length} soumissions affichées`);
+  }
+
+  goToPage(page: number): void {
+    if (page >= 1 && page <= this.totalPages) {
+      this.currentPage = page;
+      this.updatePagination();
+    }
+  }
+
+  nextPage(): void {
+    if (this.currentPage < this.totalPages) {
+      this.currentPage++;
+      this.updatePagination();
+    }
+  }
+
+  previousPage(): void {
+    if (this.currentPage > 1) {
+      this.currentPage--;
+      this.updatePagination();
+    }
+  }
+
+  onPageSizeChange(): void {
+    this.currentPage = 1;
+    this.updatePagination();
+  }
+
+  getPageNumbers(): number[] {
+    const pages = [];
+    const maxVisiblePages = 5;
+    
+    let startPage = Math.max(1, this.currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(this.totalPages, startPage + maxVisiblePages - 1);
+    
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i);
+    }
+    
+    return pages;
   }
 
   // === MÉTHODES DE CHARGEMENT ===
@@ -733,6 +796,10 @@ export class ChecklistListComponent implements OnInit {
       this.submissionsLoading = false;
       this.activeTab = 'history';
       
+      // Initialiser la pagination après le chargement
+      this.currentPage = 1;
+      this.updatePagination();
+      
       console.log(`🎯 ${this.submissions.length} soumissions chargées au total pour ${this.checklists.length} checklists`);
     });
   }
@@ -774,6 +841,10 @@ export class ChecklistListComponent implements OnInit {
         
         this.submissionsLoading = false;
         this.activeTab = 'history';
+        
+        // Initialiser la pagination après le chargement
+        this.currentPage = 1;
+        this.updatePagination();
         
         console.log(`🎯 ${this.submissions.length} soumissions chargées pour la checklist ${checklistId}`);
       },
@@ -1224,7 +1295,6 @@ export class ChecklistListComponent implements OnInit {
     printWindow.document.close();
   }
 
-  // === AUTRES MÉTHODES ===
 
   diagnoseEmptySubmissions(): void {
     console.log('🩺 Diagnostic des soumissions vides...');
@@ -1296,6 +1366,10 @@ export class ChecklistListComponent implements OnInit {
     this.submissions = testSubmissions;
     this.submissionsLoading = false;
     this.activeTab = 'history';
+    
+    // Initialiser la pagination après création des données de test
+    this.currentPage = 1;
+    this.updatePagination();
     
     console.log('✅ Données de test créées pour toutes les checklists:', this.submissions);
     alert('Données de test créées avec succès !');

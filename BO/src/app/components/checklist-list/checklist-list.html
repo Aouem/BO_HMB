@@ -2,21 +2,21 @@
   <!-- En-tête avec onglets -->
   <div class="header-actions">
     <h1>🎯 Checklist Chirurgicale</h1>
-  <div class="tabs-container d-flex justify-content-center mb-3">
-  <button 
-    class="btn me-2"
-    [ngClass]="{'btn-primary': activeTab === 'edit', 'btn-outline-primary': activeTab !== 'edit'}"
-    (click)="activeTab = 'edit'">
-    ✏️ Édition
-  </button>
+    <div class="tabs-container d-flex justify-content-center mb-3">
+      <button 
+        class="btn me-2"
+        [ngClass]="{'btn-primary': activeTab === 'edit', 'btn-outline-primary': activeTab !== 'edit'}"
+        (click)="activeTab = 'edit'">
+        ✏️ Édition
+      </button>
 
-  <button 
-    class="btn"
-    [ngClass]="{'btn-primary': activeTab === 'history', 'btn-outline-primary': activeTab !== 'history'}"
-    (click)="activeTab = 'history'; loadAllSubmissions()">
-    📊 Historique des Soumissions
-  </button>
-</div>
+      <button 
+        class="btn"
+        [ngClass]="{'btn-primary': activeTab === 'history', 'btn-outline-primary': activeTab !== 'history'}"
+        (click)="activeTab = 'history'; loadAllSubmissions()">
+        📊 Historique des Soumissions
+      </button>
+    </div>
 
     <button class="btn creative-btn gradient-btn" (click)="createNewChecklist()">
       ✨ Nouvelle Checklist
@@ -238,7 +238,7 @@
       <p>Chargement de l'historique des soumissions...</p>
     </div>
 
-    <!-- Tableau des soumissions -->
+    <!-- Tableau des soumissions AVEC PAGINATION -->
     <div *ngIf="!submissionsLoading" class="submissions-container">
       <div *ngIf="submissions.length === 0" class="empty-state">
         <h3>Aucune soumission trouvée</h3>
@@ -246,6 +246,22 @@
       </div>
 
       <div *ngIf="submissions.length > 0" class="table-container">
+        
+        <!-- Contrôles de pagination en haut -->
+        <div class="pagination-controls-top">
+          <div class="pagination-info">
+            <span>Affichage de {{ paginatedSubmissions.length }} soumissions sur {{ submissions.length }} au total</span>
+          </div>
+          <div class="pagination-nav">
+            <select class="form-select page-size-select" [ngModel]="pageSize" (ngModelChange)="pageSize = $event; onPageSizeChange()">
+              <option value="5">5 par page</option>
+              <option value="10">10 par page</option>
+              <option value="20">20 par page</option>
+              <option value="50">50 par page</option>
+            </select>
+          </div>
+        </div>
+
         <table class="submissions-table">
           <thead>
             <tr>
@@ -259,7 +275,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let submission of submissions" class="submission-row">
+            <tr *ngFor="let submission of paginatedSubmissions" class="submission-row">
               <td class="checklist-id">{{ submission.checkListId }}</td>
               <td class="checklist-name">{{ submission.checklistName }}</td>
               <td class="submission-date">{{ formatDate(submission.submittedAt) }}</td>
@@ -277,7 +293,6 @@
                 </button>
               </td>
               <td class="print-actions">
-                <!-- BOUTON CORRIGÉ : utilisation de (click) au lieu de onclick -->
                 <button class="btn creative-btn btn-print" (click)="printSubmission(submission)">
                   🖨️ Imprimer
                 </button>
@@ -285,6 +300,40 @@
             </tr>
           </tbody>
         </table>
+
+        <!-- Contrôles de pagination en bas -->
+        <div class="pagination-controls">
+          <div class="pagination-info">
+            Page {{ currentPage }} sur {{ totalPages }} - {{ submissions.length }} soumissions
+          </div>
+          
+          <div class="pagination-buttons">
+            <button 
+              class="btn btn-outline-primary" 
+              [disabled]="currentPage === 1"
+              (click)="previousPage()">
+              ‹ Précédent
+            </button>
+            
+            <div class="page-numbers">
+              <button 
+                *ngFor="let page of getPageNumbers()"
+                class="btn page-number"
+                [class.btn-primary]="page === currentPage"
+                [class.btn-outline-primary]="page !== currentPage"
+                (click)="goToPage(page)">
+                {{ page }}
+              </button>
+            </div>
+            
+            <button 
+              class="btn btn-outline-primary"
+              [disabled]="currentPage === totalPages"
+              (click)="nextPage()">
+              Suivant ›
+            </button>
+          </div>
+        </div>
       </div>
 
       <!-- Modal de détails -->
@@ -344,7 +393,6 @@
             <button class="btn creative-btn btn-secondary" (click)="hideSubmissionDetails()">
               Fermer
             </button>
-            <!-- Bouton d'impression dans le modal -->
             <button class="btn creative-btn btn-primary" (click)="printSubmission(selectedSubmission)">
               🖨️ Imprimer cette soumission
             </button>
