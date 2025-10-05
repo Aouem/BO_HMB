@@ -1,0 +1,55 @@
+Msg 102, Level 15, State 1, Server e75ff85aa4f1, Line 1
+Incorrect syntax near 'le'.
+2. STRUCTURE FormSubmissions:
+COLUMN_NAME                                                                                                                      DATA_TYPE                                                                                                                        IS_NULLABLE
+-------------------------------------------------------------------------------------------------------------------------------- -------------------------------------------------------------------------------------------------------------------------------- -----------
+Id                                                                                                                               int                                                                                                                              NO         
+CheckListId                                                                                                                      int                                                                                                                              NO         
+SubmittedAt                                                                                                                      datetime2                                                                                                                        NO         
+SubmittedBy                                                                                                                      nvarchar                                                                                                                         YES        
+
+(4 rows affected)
+3. STRUCTURE FormAnswers:
+COLUMN_NAME                                                                                                                      DATA_TYPE                                                                                                                        IS_NULLABLE
+-------------------------------------------------------------------------------------------------------------------------------- -------------------------------------------------------------------------------------------------------------------------------- -----------
+Id                                                                                                                               int                                                                                                                              NO         
+SubmissionId                                                                                                                     int                                                                                                                              NO         
+QuestionId                                                                                                                       int                                                                                                                              NO         
+Reponse                                                                                                                          nvarchar                                                                                                                         YES        
+
+(4 rows affected)
+4. DONNÉES FormSubmissions:
+TotalSoumissions
+----------------
+               0
+
+(1 rows affected)
+Id          CheckListId SubmittedAt                            SubmittedBy                                                                                                                     
+----------- ----------- -------------------------------------- --------------------------------------------------------------------------------------------------------------------------------
+
+(0 rows affected)
+CheckListId NbSoumissions
+----------- -------------
+
+(0 rows affected)
+5. DONNÉES FormAnswers:
+TotalReponses
+-------------
+            0
+
+(1 rows affected)
+Id          SubmissionId QuestionId  Reponse                                                                                                                                                                                                                                                         
+----------- ------------ ----------- ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+(0 rows affected)
+SubmissionId NbReponses 
+------------ -----------
+
+(0 rows affected)
+6. RELATIONS:
+SubmissionId NbReponses 
+------------ -----------
+
+(0 rows affected)
+Msg 102, Level 15, State 1, Server e75ff85aa4f1, Line 3
+Incorrect syntax near 'Puis'.

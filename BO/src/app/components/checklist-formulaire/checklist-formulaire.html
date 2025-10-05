@@ -84,74 +84,76 @@
 
     <!-- Mode vue d'ensemble des étapes -->
     <div *ngIf="mode === 'etape'" class="etapes-overview">
-      <!-- Boucle des étapes normales (sans la décision finale) -->
-      <div *ngFor="let etape of etapes; let i = index" 
-           class="etape-card" 
-           [class.complete]="etapesValidees[i]"
-           [class.current]="i === currentEtapeIndex"
-           [class.locked]="!isEtapeAccessible(i)">
-        
-        <div class="etape-header">
-          <div class="etape-indicator">
-            <span class="etape-number">{{ i + 1 }}</span>
-            <div class="etape-status" [class.validated]="etapesValidees[i]">
-              {{ etapesValidees[i] ? '✓' : (isEtapeAccessible(i) ? '○' : '🔒') }}
-            </div>
-          </div>
+      <!-- Boucle des étapes normales (EXCLURE l'étape "DÉCISION FINALE") -->
+      <ng-container *ngFor="let etape of etapes; let i = index">
+        <div *ngIf="!(etape.nom.toLowerCase().includes('décision') || etape.nom.toLowerCase().includes('decision'))"
+             class="etape-card" 
+             [class.complete]="etapesValidees[i]"
+             [class.current]="i === currentEtapeIndex"
+             [class.locked]="!isEtapeAccessible(i)">
           
-          <div class="etape-info">
-            <h3 class="etape-title">{{ etape.nom }}</h3>
-            <p class="etape-stats">
-              {{ getEtapeAnsweredQuestions(i) }}/{{ etape.questions.length }} réponses
-            </p>
-          </div>
-
-          <!-- Barre de progression par étape -->
-          <div class="etape-progress">
-            <div class="progress-info">
-              <span class="progress-label">Progression</span>
-              <span class="progress-percent">{{ getEtapeProgress(i) | number:'1.0-0' }}%</span>
+          <div class="etape-header">
+            <div class="etape-indicator">
+              <span class="etape-number">{{ i + 1 }}</span>
+              <div class="etape-status" [class.validated]="etapesValidees[i]">
+                {{ etapesValidees[i] ? '✓' : (isEtapeAccessible(i) ? '○' : '🔒') }}
+              </div>
             </div>
             
-            <div class="progress-bar-container small">
-              <div class="progress-fill" [style.width.%]="getEtapeProgress(i)"></div>
+            <div class="etape-info">
+              <h3 class="etape-title">{{ etape.nom }}</h3>
+              <p class="etape-stats">
+                {{ getEtapeAnsweredQuestions(i) }}/{{ etape.questions.length }} réponses
+              </p>
+            </div>
+
+            <!-- Barre de progression par étape -->
+            <div class="etape-progress">
+              <div class="progress-info">
+                <span class="progress-label">Progression</span>
+                <span class="progress-percent">{{ getEtapeProgress(i) | number:'1.0-0' }}%</span>
+              </div>
+              
+              <div class="progress-bar-container small">
+                <div class="progress-fill" [style.width.%]="getEtapeProgress(i)"></div>
+              </div>
             </div>
           </div>
+
+          <div class="etape-actions">
+            <button *ngIf="!etapesValidees[i]" 
+                    class="btn-start"
+                    [class.disabled]="!isEtapeAccessible(i)"
+                    [title]="getEtapeTooltip(i)"
+                    (click)="commencerEtape(i)"
+                    [disabled]="!isEtapeAccessible(i)">
+              {{ i === currentEtapeIndex ? 'Continuer' : 'Commencer' }}
+            </button>
+            
+            <button *ngIf="etapesValidees[i]" 
+                    class="btn-review"
+                    (click)="commencerEtape(i)">
+              Réviser
+            </button>
+
+            <button *ngIf="etapesValidees[i]" 
+                    class="btn-reopen"
+                    (click)="reouvrirEtape(i)">
+              Rouvrir
+            </button>
+          </div>
+
+          <!-- Message d'étape verrouillée -->
+          <div *ngIf="!isEtapeAccessible(i) && !etapesValidees[i]" class="locked-message">
+            <span class="lock-icon">🔒</span>
+            <span class="locked-text">Validez les étapes précédentes pour déverrouiller</span>
+          </div>
         </div>
+      </ng-container>
 
-        <div class="etape-actions">
-          <button *ngIf="!etapesValidees[i]" 
-                  class="btn-start"
-                  [class.disabled]="!isEtapeAccessible(i)"
-                  [title]="getEtapeTooltip(i)"
-                  (click)="commencerEtape(i)"
-                  [disabled]="!isEtapeAccessible(i)">
-            {{ i === currentEtapeIndex ? 'Continuer' : 'Commencer' }}
-          </button>
-          
-          <button *ngIf="etapesValidees[i]" 
-                  class="btn-review"
-                  (click)="commencerEtape(i)">
-            Réviser
-          </button>
-
-          <button *ngIf="etapesValidees[i]" 
-                  class="btn-reopen"
-                  (click)="reouvrirEtape(i)">
-            Rouvrir
-          </button>
-        </div>
-
-        <!-- Message d'étape verrouillée -->
-        <div *ngIf="!isEtapeAccessible(i) && !etapesValidees[i]" class="locked-message">
-          <span class="lock-icon">🔒</span>
-          <span class="locked-text">Validez les étapes précédentes pour déverrouiller</span>
-        </div>
-      </div>
-
-      <!-- DÉCISION FINALE - Section séparée (APRÈS les étapes normales) -->
-      <div *ngIf="toutesEtapesValidees()" class="decision-finale-section">
-        <div class="decision-card">
+      <!-- DÉCISION FINALE - Section UNIQUE (APRÈS les étapes normales) -->
+      <div class="decision-finale-section">
+        <div *ngIf="toutesEtapesValidees(); else decisionLocked" class="decision-card">
           <h3 class="decision-title">🎯 DÉCISION FINALE</h3>
           
           <div class="decision-question">
@@ -205,20 +207,20 @@
             </p>
           </div>
         </div>
-      </div>
 
-      <!-- Message si la décision finale n'est pas encore accessible -->
-      <div *ngIf="!toutesEtapesValidees()" class="decision-locked-section">
-        <div class="decision-card locked">
-          <h3 class="decision-title">🎯 DÉCISION FINALE</h3>
-          <div class="locked-decision-message">
-            <span class="lock-icon">🔒</span>
-            <p>Validez toutes les étapes précédentes pour accéder à la décision finale</p>
-            <div class="etapes-restantes">
-              Étapes restantes : {{ etapes.length - etapesCompletees }}/{{ etapes.length }}
+        <!-- Template pour la version verrouillée -->
+        <ng-template #decisionLocked>
+          <div class="decision-card locked">
+            <h3 class="decision-title">🎯 DÉCISION FINALE</h3>
+            <div class="locked-decision-message">
+              <span class="lock-icon">🔒</span>
+              <p>Validez toutes les étapes précédentes pour accéder à la décision finale</p>
+              <div class="etapes-restantes">
+                Étapes restantes : {{ etapes.length - etapesCompletees }}/{{ etapes.length }}
+              </div>
             </div>
           </div>
-        </div>
+        </ng-template>
       </div>
     </div>
 

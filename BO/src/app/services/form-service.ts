@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { catchError, map, Observable, of } from 'rxjs';
+import { catchError, map, Observable, of, tap, throwError } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { CheckListDto, CreateCheckListDto, FormResponseDto, FormSubmissionDto, QuestionDto } from '../models';
 
@@ -41,30 +41,81 @@ export class FormService {
   }
 
   // ========== FORM SUBMISSION METHODS ==========
+ // ========== FORM SUBMISSION METHODS ==========
   submitForm(formData: FormResponseDto): Observable<FormSubmissionDto> {
-    return this.http.post<FormSubmissionDto>(`${this.formApi}/submit`, {
-      ...formData,
+    // ✅ CORRECTION CRITIQUE : S'assurer que tous les champs sont définis
+    const completePayload: any = {
+      checkListId: formData.checkListId,
+      reponses: formData.reponses || [],
+      submittedBy: formData.submittedBy || this.getCurrentUser(),
       submittedAt: formData.submittedAt || new Date().toISOString(),
-      submittedBy: formData.submittedBy || this.getCurrentUser()
+      decisionFinale: formData.decisionFinale || '', // ✅ FORCER la valeur même si undefined
+      consequence: formData.consequence || ''         // ✅ FORCER la valeur même si undefined
+    };
+
+    // ✅ DEBUG COMPLET avec vérification de chaque champ
+    console.log('🔍🔄 DEBUG CRITIQUE FORM SERVICE - Payload créé:', {
+      checkListId: completePayload.checkListId,
+      nbReponses: completePayload.reponses.length,
+      reponses: completePayload.reponses,
+      decisionFinale: completePayload.decisionFinale,
+      consequence: completePayload.consequence,
+      submittedBy: completePayload.submittedBy,
+      submittedAt: completePayload.submittedAt,
+      // Vérifier la structure exacte
+      payloadStructure: Object.keys(completePayload),
+      payloadJSON: JSON.stringify(completePayload)
     });
+
+    return this.http.post<FormSubmissionDto>(`${this.formApi}/submit`, completePayload).pipe(
+      tap(response => {
+        console.log('✅🔄 DEBUG FORM SERVICE - Réponse API reçue:', {
+          submissionId: response.id,
+          reponsesCount: response.reponses?.length || 0,
+          decisionFinale: response.decisionFinale,  // ← VÉRIFIER SI REMPLI
+          consequence: response.consequence,        // ← VÉRIFIER SI REMPLI
+          responseComplete: response
+        });
+      }),
+      catchError(error => {
+        console.error('❌🔄 DEBUG FORM SERVICE - Erreur détaillée:', {
+          status: error.status,
+          statusText: error.statusText,
+          message: error.message,
+          error: error.error,
+          url: error.url
+        });
+        return throwError(() => new Error(`Erreur lors de la soumission: ${error.message}`));
+      })
+    );
   }
 
-getFormSubmissions(checklistId: number): Observable<FormSubmissionDto[]> {
-  console.log('🔄 Chargement submissions pour checklist:', checklistId);
-  
-  return this.http.get<FormSubmissionDto[]>(`${this.formApi}/submissions`, {
-    params: { checkListId: checklistId.toString() }
-  }).pipe(
-    map((submissions: FormSubmissionDto[]) => {
-      console.log('✅ Soumissions reçues:', submissions);
-      return submissions;
-    }),
-    catchError(error => {
-      console.error('❌ Erreur lors du chargement des soumissions:', error);
-      return of([]);
-    })
-  );
-}
+  getFormSubmissions(checklistId: number): Observable<FormSubmissionDto[]> {
+    console.log('🔄 Chargement submissions pour checklist:', checklistId);
+    
+    return this.http.get<FormSubmissionDto[]>(`${this.formApi}/submissions`, {
+      params: { checkListId: checklistId.toString() }
+    }).pipe(
+      tap(submissions => {
+        console.log(`✅ ${submissions.length} soumissions reçues pour checklist ${checklistId}:`);
+        submissions.forEach((sub, index) => {
+          console.log(`  📄 Soumission ${index + 1}:`, {
+            id: sub.id,
+            reponses: sub.reponses?.length || 0,
+            decisionFinale: sub.decisionFinale,
+            consequence: sub.consequence,
+            submittedAt: sub.submittedAt
+          });
+        });
+      }),
+      catchError(error => {
+        console.error('❌ Erreur lors du chargement des soumissions:', error);
+        return of([]);
+      })
+    );
+  }
+
+
 
   getFormSubmissionById(submissionId: number): Observable<FormSubmissionDto> {
     return this.http.get<FormSubmissionDto>(`${this.formApi}/submissions/${submissionId}`);
@@ -110,4 +161,5 @@ getFormSubmissions(checklistId: number): Observable<FormSubmissionDto[]> {
       })
     );
   }
+  
 }

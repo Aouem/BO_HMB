@@ -1,10 +1,9 @@
-// check-list-service.ts
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, map, switchMap, catchError, of, forkJoin, throwError } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { CheckListDto, CreateCheckListDto, EtapeDto, FormResponseDto, FormSubmissionDto, QuestionDto, QuestionResponseDto } from '../models';
-
+import { tap } from 'rxjs/operators';
 // Attache des soumissions à chaque question
 export interface QuestionSubmission {
   submissionId?: number;
@@ -32,7 +31,25 @@ export class CheckListService {
 
   // ===== CheckList CRUD =====
   getCheckList(id: number): Observable<CheckListDto> {
+    console.log(`🔍 Chargement détaillé de la checklist ID: ${id}`);
     return this.http.get<CheckListDto>(`${this.apiUrl}/${id}`).pipe(
+      tap(checklist => {
+        console.log(`✅ Checklist ${id} chargée: "${checklist.libelle}"`);
+        console.log(`📋 Détails des étapes:`);
+        
+        if (!checklist.etapes || checklist.etapes.length === 0) {
+          console.warn(`⚠️  Aucune étape trouvée pour la checklist ${id}`);
+        } else {
+          checklist.etapes.forEach((etape, index) => {
+            console.log(`   Étape ${index + 1}: "${etape.nom}" - ${etape.questions?.length || 0} questions`);
+            if (etape.questions && etape.questions.length > 0) {
+              etape.questions.forEach((question, qIndex) => {
+                console.log(`      Q${qIndex + 1}: "${question.texte}" (ID: ${question.id})`);
+              });
+            }
+          });
+        }
+      }),
       catchError(error => {
         console.error(`❌ Erreur chargement checklist ${id}:`, error);
         return throwError(() => new Error('Erreur lors du chargement de la checklist'));
@@ -41,7 +58,14 @@ export class CheckListService {
   }
 
   getAllCheckLists(): Observable<CheckListDto[]> {
+    console.log('🔄 Chargement de toutes les checklists...');
     return this.http.get<CheckListDto[]>(this.apiUrl).pipe(
+      tap(checklists => {
+        console.log(`✅ ${checklists.length} checklists chargées avec succès`);
+        checklists.forEach((checklist, index) => {
+          console.log(`   ${index + 1}. "${checklist.libelle}" (ID: ${checklist.id}) - ${checklist.etapes?.length || 0} étapes`);
+        });
+      }),
       catchError(error => {
         console.error('❌ Erreur chargement des checklists:', error);
         return of([]);
@@ -79,46 +103,78 @@ export class CheckListService {
   // ===== Soumissions =====
 
   /** Enregistrer une soumission */
-  submitChecklist(payload: FormResponseDto): Observable<FormSubmissionDto> {
-    const completePayload = {
-      ...payload,
-      submittedAt: payload.submittedAt || new Date().toISOString(),
-      submittedBy: payload.submittedBy || this.getCurrentUser()
-    };
-    
-    console.log('📤 Soumission checklist:', completePayload);
-    
-    return this.http.post<FormSubmissionDto>(`${this.formApi}/submit`, completePayload).pipe(
-      catchError(error => {
-        console.error('❌ Erreur soumission checklist:', error);
-        return throwError(() => new Error('Erreur lors de la soumission du formulaire'));
-      })
-    );
-  }
-
-  /** Lire les soumissions horodatées d'une checklist */
-/** Lire les soumissions horodatées d'une checklist */
-getChecklistSubmissions(checklistId: number): Observable<FormSubmissionDto[]> {
-  console.log('🔄 Chargement soumissions pour checklist:', checklistId);
+ submitChecklist(payload: FormResponseDto): Observable<FormSubmissionDto> {
+  const completePayload = {
+    ...payload,
+    submittedAt: payload.submittedAt || new Date().toISOString(),
+    submittedBy: payload.submittedBy || this.getCurrentUser()
+  };
   
-  return this.http.get<FormSubmissionDto[]>(`${this.formApi}/submissions`, {
-    params: { checkListId: checklistId.toString() }
-  }).pipe(
-    map((submissions: FormSubmissionDto[]) => {
-      if (!submissions || !Array.isArray(submissions)) {
-        console.warn('⚠️ Réponse invalide du serveur, utilisation de tableau vide');
-        return [];
-      }
-      
-      console.log(`✅ ${submissions.length} soumissions trouvées pour checklist ${checklistId}`);
-      return submissions;
+  // DEBUG DÉTAILLÉ
+  console.log('🔍 DEBUG ANGULAR SUBMIT - Avant envoi:', {
+    checkListId: completePayload.checkListId,
+    nbReponses: completePayload.reponses?.length || 0,
+    reponses: completePayload.reponses,
+    submittedBy: completePayload.submittedBy,
+    payloadComplet: completePayload
+  });
+  
+  if (completePayload.reponses && completePayload.reponses.length > 0) {
+    completePayload.reponses.forEach((reponse, index) => {
+      console.log(`  📝 Réponse ${index + 1}:`, {
+        questionId: reponse.questionId,
+        reponse: reponse.reponse
+      });
+    });
+  } else {
+    console.log('❌ DEBUG ANGULAR: reponses est VIDE!', {
+      estNull: completePayload.reponses === null,
+      estUndefined: completePayload.reponses === undefined,
+      estTableauVide: Array.isArray(completePayload.reponses) && completePayload.reponses.length === 0
+    });
+  }
+  
+  return this.http.post<FormSubmissionDto>(`${this.formApi}/submit`, completePayload).pipe(
+    tap(response => {
+      console.log('✅ DEBUG ANGULAR: Réponse API reçue:', {
+        submissionId: response.id,
+        nbReponsesSauvegardees: response.reponses.length,
+        reponses: response.reponses
+      });
     }),
     catchError(error => {
-      console.error('❌ Erreur chargement soumissions:', error);
-      return of([]);
+      console.error('❌ DEBUG ANGULAR: Erreur soumission:', {
+        error: error,
+        status: error.status,
+        message: error.message
+      });
+      return throwError(() => new Error('Erreur lors de la soumission du formulaire'));
     })
   );
 }
+
+  /** Lire les soumissions horodatées d'une checklist */
+  getChecklistSubmissions(checklistId: number): Observable<FormSubmissionDto[]> {
+    console.log('🔄 Chargement soumissions pour checklist:', checklistId);
+    
+    return this.http.get<FormSubmissionDto[]>(`${this.formApi}/submissions`, {
+      params: { checkListId: checklistId.toString() }
+    }).pipe(
+      map((submissions: FormSubmissionDto[]) => {
+        if (!submissions || !Array.isArray(submissions)) {
+          console.warn('⚠️ Réponse invalide du serveur, utilisation de tableau vide');
+          return [];
+        }
+        
+        console.log(`✅ ${submissions.length} soumissions trouvées pour checklist ${checklistId}`);
+        return submissions;
+      }),
+      catchError(error => {
+        console.error('❌ Erreur chargement soumissions:', error);
+        return of([]);
+      })
+    );
+  }
 
   getLatestSubmission(checklistId: number): Observable<FormSubmissionDto | null> {
     return this.getChecklistSubmissions(checklistId).pipe(
@@ -186,96 +242,96 @@ getChecklistSubmissions(checklistId: number): Observable<FormSubmissionDto[]> {
   }
 
   /** Agrégat: Checklist + Étapes + Questions + submissions[] */
-  getChecklistWithSubmissions(checklistId: number): Observable<AggregatedChecklistDto> {
-    console.log('🔄 Chargement checklist agrégée:', checklistId);
-    
-    return this.getCheckList(checklistId).pipe(
-      switchMap((cl) => {
-        if (!cl) {
-          throw new Error('Checklist non trouvée');
-        }
+// Dans la méthode getChecklistWithSubmissions, remplacer cette partie :
 
-        // Squelette de la checklist agrégée
-        const aggregated: AggregatedChecklistDto = {
-          id: cl.id,
-          libelle: cl.libelle,
-          version: cl.version,
-          description: cl.description,
-          etapes: (cl.etapes || []).map(e => ({
-            id: e.id,
-            nom: e.nom,
-            ordre: e.ordre,
-            estValidee: e.estValidee,
-            questions: (e.questions || []).map(q => ({ 
-              ...q, 
-              submissions: [] 
-            }))
+
+getChecklistWithSubmissions(checklistId: number): Observable<AggregatedChecklistDto> {
+  console.log('🔄 Chargement checklist agrégée:', checklistId);
+  
+  return this.getCheckList(checklistId).pipe(
+    switchMap((cl) => {
+      if (!cl) {
+        throw new Error('Checklist non trouvée');
+      }
+
+      // Squelette de la checklist agrégée
+      const aggregated: AggregatedChecklistDto = {
+        id: cl.id,
+        libelle: cl.libelle,
+        version: cl.version,
+        description: cl.description,
+        etapes: (cl.etapes || []).map(e => ({
+          id: e.id,
+          nom: e.nom,
+          ordre: e.ordre,
+          estValidee: e.estValidee,
+          questions: (e.questions || []).map(q => ({ 
+            ...q, 
+            submissions: [] 
           }))
-        };
+        }))
+      };
 
-        // Index questionId -> référence
-        const qIndex = new Map<number, QuestionDto & { submissions: QuestionSubmission[] }>();
-        aggregated.etapes.forEach(et =>
-          et.questions.forEach(q => { 
-            if (q.id != null) qIndex.set(q.id, q); 
-          })
-        );
+      // Index questionId -> référence
+      const qIndex = new Map<number, QuestionDto & { submissions: QuestionSubmission[] }>();
+      aggregated.etapes.forEach(et =>
+        et.questions.forEach(q => { 
+          if (q.id != null) qIndex.set(q.id, q); 
+        })
+      );
 
-        console.log(`📋 ${qIndex.size} questions indexées`);
+      console.log(`📋 ${qIndex.size} questions indexées`);
 
-        return forkJoin({
-          subs: this.getChecklistSubmissions(checklistId),
-          answers: this.getLatestAnswers(checklistId)
-        }).pipe(
-          map(({ subs, answers }) => {
-            // Injecte les soumissions historiques
-            if (subs?.length > 0) {
-              console.log(`🔄 Injection de ${subs.length} soumissions`);
-              for (const s of subs) {
-                for (const r of (s.reponses || [])) {
-                  const tgt = qIndex.get(r.questionId);
-                  if (!tgt) continue;
-                  tgt.submissions.push({
-                    submissionId: s.id,
-                    reponse: r.reponse ?? '',
-                    submittedAt: s.submittedAt,
-                    submittedBy: s.submittedBy
-                  });
+      return forkJoin({
+        subs: this.getChecklistSubmissions(checklistId),
+        answers: this.getLatestAnswers(checklistId)
+      }).pipe(
+        map(({ subs, answers }) => {
+          // DEBUG: Vérifier le contenu des soumissions
+          console.log('🔍 DEBUG - Contenu des soumissions:', subs);
+          
+          // Injecte les soumissions historiques
+          if (subs?.length > 0) {
+            console.log(`🔄 Injection de ${subs.length} soumissions`);
+            for (const s of subs) {
+              console.log(`📄 Soumission ${s.id}:`, {
+                reponsesCount: s.reponses?.length || 0,
+                reponses: s.reponses
+              });
+              
+              for (const r of (s.reponses || [])) {
+                console.log(`  ➡️ Réponse: QuestionID=${r.questionId}, Réponse="${r.reponse}"`);
+                const tgt = qIndex.get(r.questionId);
+                if (!tgt) {
+                  console.warn(`  ⚠️ QuestionID ${r.questionId} non trouvée dans l'index`);
+                  continue;
                 }
+                tgt.submissions.push({
+                  submissionId: s.id,
+                  reponse: r.reponse ?? '',
+                  submittedAt: s.submittedAt,
+                  submittedBy: s.submittedBy
+                });
               }
             }
+          }
 
-            // Fallback: pas d'historique → réponses courantes
-            const hasAny = Array.from(qIndex.values()).some(q => q.submissions.length > 0);
-            if (!hasAny && answers?.length > 0) {
-              console.log(`🔄 Utilisation des réponses courantes (${answers.length})`);
-              for (const a of answers) {
-                if (!a?.id) continue;
-                const tgt = qIndex.get(a.id);
-                const val = (a?.reponse ?? '').trim();
-                if (tgt && val) {
-                  tgt.submissions.push({ 
-                    reponse: val 
-                  });
-                }
-              }
-            }
+          // Statistiques finales
+          const totalSubmissions = Array.from(qIndex.values())
+            .reduce((sum, q) => sum + q.submissions.length, 0);
+          console.log(`✅ Checklist agrégée chargée: ${totalSubmissions} réponses totales`);
 
-            // Statistiques finales
-            const totalSubmissions = Array.from(qIndex.values())
-              .reduce((sum, q) => sum + q.submissions.length, 0);
-            console.log(`✅ Checklist agrégée chargée: ${totalSubmissions} réponses totales`);
+          return aggregated;
+        })
+      );
+    }),
+    catchError(error => {
+      console.error('❌ Erreur chargement checklist agrégée:', error);
+      return throwError(() => new Error('Erreur lors du chargement de la checklist avec historique'));
+    })
+  );
+}
 
-            return aggregated;
-          })
-        );
-      }),
-      catchError(error => {
-        console.error('❌ Erreur chargement checklist agrégée:', error);
-        return throwError(() => new Error('Erreur lors du chargement de la checklist avec historique'));
-      })
-    );
-  }
 
   // ===== Méthodes utilitaires =====
   
@@ -299,3 +355,4 @@ getChecklistSubmissions(checklistId: number): Observable<FormSubmissionDto[]> {
     console.log('🧹 Cache local nettoyé pour checklist:', checklistId);
   }
 }
+

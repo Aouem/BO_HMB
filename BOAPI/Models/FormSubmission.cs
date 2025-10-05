@@ -12,6 +12,9 @@ namespace BOAPI.Models
         public DateTime SubmittedAt { get; set; } = DateTime.UtcNow;
         public string? SubmittedBy { get; set; }
 
+            public string DecisionFinale { get; set; } = string.Empty;
+        public string Consequence { get; set; } = string.Empty;
+
         public ICollection<FormAnswer> Answers { get; set; } = new List<FormAnswer>();
     }
 

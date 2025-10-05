@@ -21,6 +21,25 @@ namespace BOAPI.Controllers
         [HttpPost("submit")]
         public async Task<ActionResult<FormSubmissionDto>> Submit([FromBody] FormResponseDto dto)
         {
+            // DEBUG: Log du payload reçu COMPLET
+            Console.WriteLine($"🔍 DEBUG SUBMIT - ChecklistId: {dto?.CheckListId}");
+            Console.WriteLine($"🔍 DEBUG SUBMIT - Nombre de réponses: {dto?.Reponses?.Count ?? 0}");
+            Console.WriteLine($"🔍 DEBUG SUBMIT - SubmittedBy: {dto?.SubmittedBy}");
+            Console.WriteLine($"🔍 DEBUG SUBMIT - DecisionFinale: {dto?.DecisionFinale}");
+            Console.WriteLine($"🔍 DEBUG SUBMIT - Consequence: {dto?.Consequence}");
+            
+            if (dto?.Reponses != null)
+            {
+                foreach (var reponse in dto.Reponses)
+                {
+                    Console.WriteLine($"  📝 QuestionId: {reponse.QuestionId}, Réponse: '{reponse.Reponse}'");
+                }
+            }
+            else
+            {
+                Console.WriteLine("⚠️  DEBUG: Aucune réponse reçue dans le payload!");
+            }
+
             if (dto == null)
             {
                 return BadRequest("Les données de soumission sont requises.");
@@ -41,16 +60,22 @@ namespace BOAPI.Controllers
 
             try
             {
-                // Créer une nouvelle soumission
+                // Créer une nouvelle soumission AVEC les champs de décision
                 var submission = new FormSubmission
                 {
                     CheckListId = dto.CheckListId,
                     SubmittedBy = string.IsNullOrEmpty(dto.SubmittedBy) ? "Utilisateur Anonyme" : dto.SubmittedBy,
-                    SubmittedAt = DateTime.UtcNow
+                    SubmittedAt = DateTime.UtcNow,
+                    DecisionFinale = dto.DecisionFinale ?? string.Empty,  // ✅ AJOUTER
+                    Consequence = dto.Consequence ?? string.Empty         // ✅ AJOUTER
                 };
 
                 _db.FormSubmissions.Add(submission);
                 await _db.SaveChangesAsync(); // Génère submission.Id
+
+                Console.WriteLine($"✅ DEBUG: Soumission créée avec ID: {submission.Id}");
+                Console.WriteLine($"✅ DEBUG: Décision sauvegardée: {submission.DecisionFinale}");
+                Console.WriteLine($"✅ DEBUG: Conséquence sauvegardée: {submission.Consequence}");
 
                 // Valider les QuestionIds par rapport à la checklist
                 var validQuestionIds = await _db.Questions
@@ -64,6 +89,7 @@ namespace BOAPI.Controllers
                 {
                     if (!validQuestionIds.Contains(response.QuestionId))
                     {
+                        Console.WriteLine($"❌ DEBUG: QuestionId {response.QuestionId} non valide pour checklist {dto.CheckListId}");
                         return BadRequest($"QuestionId {response.QuestionId} ne correspond pas à la checklist {dto.CheckListId}");
                     }
 
@@ -75,20 +101,29 @@ namespace BOAPI.Controllers
                     });
                 }
 
+                Console.WriteLine($"🔍 DEBUG: {answersToAdd.Count} réponses à ajouter");
+
                 // Ajouter toutes les réponses en une fois
                 if (answersToAdd.Any())
                 {
                     _db.FormAnswers.AddRange(answersToAdd);
                     await _db.SaveChangesAsync();
+                    Console.WriteLine($"✅ DEBUG: {answersToAdd.Count} réponses sauvegardées");
+                }
+                else
+                {
+                    Console.WriteLine("⚠️  DEBUG: Aucune réponse à sauvegarder!");
                 }
 
-                // Construire la réponse
+                // Construire la réponse COMPLÈTE
                 var result = new FormSubmissionDto
                 {
                     Id = submission.Id,
                     CheckListId = submission.CheckListId,
                     SubmittedBy = submission.SubmittedBy,
                     SubmittedAt = submission.SubmittedAt,
+                    DecisionFinale = submission.DecisionFinale,  // ✅ AJOUTER
+                    Consequence = submission.Consequence,         // ✅ AJOUTER
                     Reponses = answersToAdd.Select(a => new QuestionResponseDto
                     {
                         QuestionId = a.QuestionId,
@@ -96,14 +131,21 @@ namespace BOAPI.Controllers
                     }).ToList()
                 };
 
+                Console.WriteLine($"✅ DEBUG: Soumission {submission.Id} complétée avec:");
+                Console.WriteLine($"  - {result.Reponses.Count} réponses");
+                Console.WriteLine($"  - Décision: {result.DecisionFinale}");
+                Console.WriteLine($"  - Conséquence: {result.Consequence}");
+
                 return Ok(result);
             }
             catch (DbUpdateException dbEx)
             {
+                Console.WriteLine($"❌ DEBUG: Erreur DB: {dbEx.InnerException?.Message ?? dbEx.Message}");
                 return StatusCode(500, $"Erreur de base de données: {dbEx.InnerException?.Message ?? dbEx.Message}");
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"❌ DEBUG: Erreur: {ex.Message}");
                 return StatusCode(500, $"Erreur interne du serveur: {ex.Message}");
             }
         }
@@ -112,6 +154,8 @@ namespace BOAPI.Controllers
         [HttpGet("submissions")]
         public async Task<ActionResult<IEnumerable<FormSubmissionDto>>> GetSubmissions([FromQuery] int checkListId)
         {
+            Console.WriteLine($"🔍 DEBUG GETSUBMISSIONS - ChecklistId: {checkListId}");
+
             if (checkListId <= 0)
             {
                 return BadRequest("checkListId doit être supérieur à 0.");
@@ -130,6 +174,8 @@ namespace BOAPI.Controllers
                         CheckListId = s.CheckListId,
                         SubmittedAt = s.SubmittedAt,
                         SubmittedBy = s.SubmittedBy,
+                        DecisionFinale = s.DecisionFinale,  // ✅ AJOUTER
+                        Consequence = s.Consequence,         // ✅ AJOUTER
                         Reponses = s.Answers.Select(a => new QuestionResponseDto
                         {
                             QuestionId = a.QuestionId,
@@ -138,10 +184,17 @@ namespace BOAPI.Controllers
                     })
                     .ToListAsync();
 
+                Console.WriteLine($"✅ DEBUG GETSUBMISSIONS: {submissions.Count} soumissions trouvées pour checklist {checkListId}");
+                foreach (var sub in submissions)
+                {
+                    Console.WriteLine($"  📄 Soumission {sub.Id}: {sub.Reponses.Count} réponses, Décision: {sub.DecisionFinale}, Conséquence: {sub.Consequence}");
+                }
+
                 return Ok(submissions);
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"❌ DEBUG GETSUBMISSIONS: Erreur: {ex.Message}");
                 return StatusCode(500, $"Erreur lors de la récupération des soumissions: {ex.Message}");
             }
         }
@@ -173,6 +226,8 @@ namespace BOAPI.Controllers
                     CheckListId = submission.CheckListId,
                     SubmittedAt = submission.SubmittedAt,
                     SubmittedBy = submission.SubmittedBy,
+                    DecisionFinale = submission.DecisionFinale,  // ✅ AJOUTER
+                    Consequence = submission.Consequence,         // ✅ AJOUTER
                     Reponses = submission.Answers.Select(a => new QuestionResponseDto
                     {
                         QuestionId = a.QuestionId,
@@ -224,29 +279,4 @@ namespace BOAPI.Controllers
         }
     }
 
-    // DTOs
-    public class FormResponseDto
-    {
-        [Required]
-        public int CheckListId { get; set; }
-
-        public string? SubmittedBy { get; set; }
-
-        public List<QuestionResponseDto>? Reponses { get; set; }
-    }
-
-    public class FormSubmissionDto
-    {
-        public int Id { get; set; }
-        public int CheckListId { get; set; }
-        public string SubmittedBy { get; set; } = string.Empty;
-        public DateTime SubmittedAt { get; set; }
-        public List<QuestionResponseDto> Reponses { get; set; } = new List<QuestionResponseDto>();
-    }
-
-    public class QuestionResponseDto
-    {
-        public int QuestionId { get; set; }
-        public string? Reponse { get; set; }
-    }
 }

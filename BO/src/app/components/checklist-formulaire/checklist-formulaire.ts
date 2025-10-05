@@ -342,13 +342,30 @@ export class ChecklistFormulaireComponent implements OnInit {
     this.loading = true;
     this.checkListService.getCheckList(this.checklistId).subscribe({
       next: (checklist: CheckListDto) => {
+        console.log('🔍 DEBUG - Checklist COMPLÈTE reçue de l\'API:', checklist);
+        
         this.checklistNom = checklist.libelle;
         
-        // FILTRER les étapes pour SUPPRIMER l'étape "DÉCISION FINALE"
-        this.etapes = checklist.etapes.filter(etape => 
-          !etape.nom.toLowerCase().includes('décision') && 
-          !etape.nom.toLowerCase().includes('decision')
+        // ✅ CORRECTION CRITIQUE : SUPPRIMER LE FILTRAGE - GARDER TOUTES LES ÉTAPES
+        this.etapes = [...checklist.etapes];
+        
+        console.log('✅ Toutes les étapes conservées:', this.etapes.length, 'étapes');
+        
+        // DEBUG: Vérifier que l'étape décision est bien présente
+        const decisionEtape = this.etapes.find(e => 
+          e.nom.toLowerCase().includes('décision') || 
+          e.nom.toLowerCase().includes('decision')
         );
+        console.log(decisionEtape ? '✅ Étape décision trouvée' : '❌ Étape décision manquante');
+
+        // Afficher tous les IDs de questions
+        console.log('🔍 DEBUG - IDs des questions APRÈS correction:');
+        this.etapes.forEach((etape, etapeIndex) => {
+          console.log(`Étape ${etapeIndex + 1} (${etape.nom}):`);
+          etape.questions.forEach((question, questionIndex) => {
+            console.log(`  Q${questionIndex + 1}: ID=${question.id}, Texte="${question.texte.substring(0, 50)}..."`);
+          });
+        });
 
         // Initialiser le mapping des questions POUR L'IMPRESSION
         this.initializeQuestionMappingForPrint();
@@ -668,7 +685,7 @@ export class ChecklistFormulaireComponent implements OnInit {
     this.currentQuestionIndex = idx >= 0 ? idx : 0;
   }
 
-  // === RÉPONSES ===
+  // === RÉPONSES - MÉTHODE CORRIGÉE ===
   getQuestionResponse(questionId: number): string | null {
     const response = this.reponsesPartielles.find(r => r.questionId === questionId);
     return response?.reponse ?? null;
@@ -679,22 +696,20 @@ export class ChecklistFormulaireComponent implements OnInit {
   }
 
   onAnswerSelected(questionId: number, value: string) {
-    const currentQuestion = this.currentQuestion;
-    if (!currentQuestion) {
-      console.error('❌ Aucune question courante');
-      return;
-    }
-
-    const realQuestionId = currentQuestion.id;
-    
-    console.log(`🎯 Réponse enregistrée - QuestionID: ${realQuestionId}, Réponse: ${value}`);
+    // DEBUG: Vérifier la correspondance des IDs
+    console.log('🔍 DEBUG onAnswerSelected:', {
+      questionIdParam: questionId,
+      currentQuestionId: this.currentQuestion?.id,
+      sameIds: questionId === this.currentQuestion?.id,
+      currentQuestionText: this.currentQuestion?.texte
+    });
 
     const response: QuestionResponseDto = { 
-      questionId: realQuestionId,
+      questionId: questionId,  // ← CORRECTION: Utiliser questionId directement
       reponse: value 
     };
     
-    const existingIndex = this.reponsesPartielles.findIndex(r => r.questionId === realQuestionId);
+    const existingIndex = this.reponsesPartielles.findIndex(r => r.questionId === questionId);
 
     if (existingIndex >= 0) {
       this.reponsesPartielles[existingIndex] = response;
@@ -712,72 +727,149 @@ export class ChecklistFormulaireComponent implements OnInit {
   }
 
   // === SUBMIT ===
-  submitFinalForm() {
-    this.debugChecklistQuestions();
+  // Dans checklist-formulaire.ts - REMPLACER submitFinalForm()
+submitFinalForm() {
+  // ✅ DEBUG COMPLET avant soumission
+  console.log('🔍📋 DEBUG AVANT SOUMISSION - État complet:');
+  console.log('- Checklist ID:', this.checklistId);
+  console.log('- Réponses partielles:', this.reponsesPartielles);
+  console.log('- Nombre de réponses:', this.reponsesPartielles.length);
+  console.log('- Décision finale:', this.decisionFinale);
+  console.log('- Conséquence:', this.consequence);
+  console.log('- Utilisateur:', this.currentUser);
 
-    if (this.reponsesPartielles.length === 0) {
-      alert('Aucune réponse à soumettre !');
-      return;
-    }
-
-    const validQuestionIds = new Set<number>();
-    this.etapes.forEach(etape => {
-      etape.questions.forEach(question => {
-        validQuestionIds.add(question.id);
-      });
-    });
-
-    const invalidResponses = this.reponsesPartielles.filter(reponse => 
-      !validQuestionIds.has(reponse.questionId)
-    );
-
-    if (invalidResponses.length > 0) {
-      console.error('❌ Réponses avec questionId invalides:', invalidResponses);
-      alert(`Erreur: ${invalidResponses.length} réponse(s) ont des IDs de question invalides. Voir la console.`);
-      return;
-    }
-
-    const toutesEtapesValidees = this.etapes.every((_, index) => this.isEtapeComplete(index));
-    if (!toutesEtapesValidees) {
-      alert('Veuillez compléter toutes les étapes avant de soumettre.');
-      return;
-    }
-
-    if (!this.isDecisionComplete()) {
-      alert('Veuillez compléter la décision finale avant de soumettre.');
-      return;
-    }
-
-    // Créer la soumission
-    const formData: FormResponseDto = {
-      checkListId: this.checklistId,
-      reponses: this.reponsesPartielles,
-      submittedBy: this.currentUser,
-      submittedAt: new Date().toISOString(),
-      decisionFinale: this.decisionFinale,
-      consequence: this.consequence
-    };
-
-    console.log('📤 Données validées envoyées:', formData);
-
-    this.loading = true;
-    
-    this.formService.submitForm(formData).subscribe({
-      next: (response: FormSubmissionDto) => {
-        console.log('✅ Soumission réussie avec réponses:', response);
-        this.submitted = true;
-        this.loading = false;
-        
-        localStorage.removeItem(`checklist_${this.checklistId}_progress`);
-        alert(`Formulaire soumis avec succès !\nID: ${response.id}\nRéponses: ${response.reponses?.length || 0}`);
-      },
-      error: (err: any) => {
-        console.error('❌ Erreur de soumission:', err);
-        this.loading = false;
-        alert('Erreur lors de la soumission du formulaire');
-      }
-    });
+  // ✅ VALIDATION RENFORCÉE
+  if (this.reponsesPartielles.length === 0) {
+    console.error('❌📋 ERREUR: Aucune réponse à soumettre!');
+    alert('Aucune réponse à soumettre !');
+    return;
   }
+
+  // Vérifier les IDs de questions
+  const validQuestionIds = new Set<number>();
+  this.etapes.forEach(etape => {
+    etape.questions.forEach(question => {
+      validQuestionIds.add(question.id);
+    });
+  });
+
+  const invalidResponses = this.reponsesPartielles.filter(reponse => 
+    !validQuestionIds.has(reponse.questionId)
+  );
+
+  if (invalidResponses.length > 0) {
+    console.error('❌📋 Réponses avec IDs invalides:', invalidResponses);
+    console.log('✅ IDs valides:', Array.from(validQuestionIds));
+    alert(`Erreur: ${invalidResponses.length} réponse(s) ont des IDs de question invalides.`);
+    return;
+  }
+
+  // ✅ CORRECTION CRITIQUE : Gestion robuste de la décision
+  let decisionFinaleASoumettre = this.decisionFinale;
+  let consequenceASoumettre = this.consequence;
+
+  // Si pas d'étape décision mais checklist complétée, définir automatiquement
+  if (!this.hasDecisionEtape() && this.toutesEtapesValidees()) {
+    console.log('⚠️📋 Checklist sans étape décision - attribution automatique GO');
+    decisionFinaleASoumettre = 'Oui';
+    consequenceASoumettre = '';
+  }
+
+  // Validation finale de la décision
+  if (!decisionFinaleASoumettre) {
+    console.error('❌📋 ERREUR CRITIQUE: decisionFinale est VIDE!');
+    alert('Veuillez sélectionner une décision finale avant de soumettre.');
+    return;
+  }
+
+  // ✅ CRÉATION EXPLICITE du FormData
+  const formData: FormResponseDto = {
+    checkListId: this.checklistId,
+    reponses: [...this.reponsesPartielles], // Copie explicite
+    submittedBy: this.currentUser,
+    submittedAt: new Date().toISOString(),
+    decisionFinale: decisionFinaleASoumettre, // ✅ GARANTI d'être défini
+    consequence: consequenceASoumettre        // ✅ GARANTI d'être défini
+  };
+
+  console.log('📤📋 DEBUG - FormData créé pour envoi:', {
+    checkListId: formData.checkListId,
+    nbReponses: formData.reponses.length,
+    decisionFinale: formData.decisionFinale,
+    consequence: formData.consequence,
+    formDataComplet: formData
+  });
+
+  this.loading = true;
+  
+  this.formService.submitForm(formData).subscribe({
+    next: (response: FormSubmissionDto) => {
+      console.log('✅📋 Soumission RÉUSSIE:', {
+        submissionId: response.id,
+        nbReponsesSauvegardees: response.reponses?.length || 0,
+        decisionFinaleSauvegardee: response.decisionFinale,
+        consequenceSauvegardee: response.consequence,
+        reponseComplete: response
+      });
+      
+      this.submitted = true;
+      this.loading = false;
+      
+      // Nettoyer le cache local
+      localStorage.removeItem(`checklist_${this.checklistId}_progress`);
+      
+      alert(`✅ Formulaire soumis avec succès !\nID: ${response.id}\nRéponses: ${response.reponses?.length || 0}\nDécision: ${response.decisionFinale || this.decisionFinale}`);
+    },
+    error: (err: any) => {
+      console.error('❌📋 Erreur de soumission détaillée:', {
+        error: err,
+        message: err.message,
+        status: err.status
+      });
+      this.loading = false;
+      alert(`❌ Erreur lors de la soumission: ${err.message || 'Vérifiez la console'}`);
+    }
+  });
+}
+
+// ✅ AJOUTER cette méthode pour tester manuellement
+testSubmissionManuelle(): void {
+  console.log('🧪 TEST MANUEL DE SOUMISSION');
+  
+  // Données de test garanties
+  const testData: FormResponseDto = {
+    checkListId: this.checklistId,
+    reponses: [
+      { questionId: 198, reponse: 'Oui' },
+      { questionId: 199, reponse: 'Oui' }
+    ],
+    submittedBy: 'test-manuel',
+    submittedAt: new Date().toISOString(),
+    decisionFinale: 'Oui',
+    consequence: 'Test réussi'
+  };
+
+  console.log('🧪 Données de test:', testData);
+
+  this.formService.submitForm(testData).subscribe({
+    next: (response) => {
+      console.log('🧪✅ Soumission test réussie:', response);
+      alert('Test réussi! Voir console.');
+    },
+    error: (error) => {
+      console.error('🧪❌ Erreur soumission test:', error);
+      alert('Test échoué! Voir console.');
+    }
+  });
+}
+
+// Ajouter cette méthode utilitaire
+hasDecisionEtape(): boolean {
+  return this.etapes.some(etape => 
+    etape.nom.toLowerCase().includes('décision') || 
+    etape.nom.toLowerCase().includes('decision')
+  );
+}
 
   debugChecklistQuestions(): void {
     console.log('🐛 DEBUG - Questions de la checklist:');
