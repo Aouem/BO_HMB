@@ -986,7 +986,6 @@ textarea:focus {
   word-wrap: break-word;
 }
 
-
 /* Styles pour la pagination */
 .pagination-controls-top {
   display: flex;
@@ -1039,6 +1038,18 @@ textarea:focus {
   min-width: 40px;
 }
 
+/* Boutons de debug */
+.debug-actions {
+  display: flex;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.debug-actions .btn {
+  font-size: 12px;
+  padding: 4px 8px;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .pagination-controls-top,
@@ -1056,4 +1067,70 @@ textarea:focus {
   .page-numbers {
     order: -1;
   }
+  
+  .debug-actions {
+    flex-direction: column;
+  }
+}
+
+/* Styles pour la correction des totaux */
+.global-fix-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 20px;
+  padding: 15px;
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 5px;
+}
+
+.debug-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 10px;
+  padding: 10px;
+  background: #f8f9fa;
+  border-radius: 5px;
+  font-size: 12px;
+}
+
+.debug-info {
+  color: #6c757d;
+  font-family: monospace;
+  font-size: 11px;
+}
+
+.badge-etapes {
+  background: #17a2b8;
+  color: white;
+}
+
+.badge-questions {
+  background: #28a745;
+  color: white;
+}
+
+/* Indicateurs visuels pour la synchronisation */
+.checklist-header {
+  position: relative;
+}
+
+.checklist-header::after {
+  content: '';
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #28a745;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
 }
