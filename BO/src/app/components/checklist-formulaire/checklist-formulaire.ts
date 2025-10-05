@@ -1214,4 +1214,50 @@ hasDecisionEtape(): boolean {
       }
     });
   }
+  // === NOUVELLE MÉTHODE POUR IDENTIFIER LES QUESTIONS DE DÉCISION ===
+
+
+// === NOUVELLES MÉTHODES POUR GÉRER LES ÉTAPES NORMALES ===
+
+// Vérifie si toutes les étapes NORMALES (sans la décision) sont validées
+toutesEtapesNormalesValidees(): boolean {
+  const etapesNormales = this.getEtapesNormales();
+  return etapesNormales.every((_, index) => this.etapesValidees[index]);
+}
+
+// Obtient le nombre d'étapes normales restantes à valider
+getEtapesNormalesRestantes(): number {
+  const etapesNormales = this.getEtapesNormales();
+  const etapesNormalesValidees = etapesNormales.filter((_, index) => this.etapesValidees[index]);
+  return etapesNormales.length - etapesNormalesValidees.length;
+}
+
+// Obtient le total des étapes normales
+getTotalEtapesNormales(): number {
+  return this.getEtapesNormales().length;
+}
+
+// Obtient les étapes normales (exclut l'étape décision)
+private getEtapesNormales(): EtapeDto[] {
+  return this.etapes.filter(etape => 
+    !(etape.nom.toLowerCase().includes('décision') || 
+      etape.nom.toLowerCase().includes('decision'))
+  );
+}
+
+// Méthode pour identifier les questions de décision
+isDecisionQuestion(question: QuestionDto): boolean {
+  if (!question) return false;
+  
+  const decisionKeywords = [
+    'décision', 'decision', 'go', 'no go', 'incision', 'ok pour incision',
+    'intervention validée', 'conséquence', 'retard', 'annulation'
+  ];
+  
+  const questionText = question.texte.toLowerCase();
+  
+  return decisionKeywords.some(keyword => 
+    questionText.includes(keyword.toLowerCase())
+  );
+}
 }
